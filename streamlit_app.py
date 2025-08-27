@@ -347,7 +347,7 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
 
-    # 1) Categorias dos básicos
+    # 1) Categorias dos básicos observadas no ERP
     st.markdown("**Categorias dos materiais básicos (observadas no ERP):**")
     df_cats = categorias_basicos_distintos(df)
     if isinstance(df_cats, pd.DataFrame) and not df_cats.empty:
@@ -355,39 +355,35 @@ with st.container(border=True):
     else:
         st.info("Não encontrei categorias para TIPO_MATERIAL = 'BÁSICO'.")
 
-    # 2) & 3) Contagem de fornecedores CADASTRADOS capazes de vender básico por local
+    # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
     st.markdown("**Fornecedores cadastrados aptos (básico) por local**")
     df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
+
     if isinstance(df_res, pd.DataFrame) and not df_res.empty:
-        # KPIs
+        # normaliza chave para evitar case/acentos
+        df_res = df_res.copy()
+        df_res["LOCAL_NORM"] = df_res["LOCAL"].astype(str).str.upper()
+        mapa = df_res.set_index("LOCAL_NORM")["FORNECEDORES_BÁSICO_CAD"].to_dict()
+
         k1, k2, k3 = st.columns(3)
-        try:
-            rj = int(df_res.loc[df_res["LOCAL"].str.upper()=="RJ", "FORNECEDORES_BÁSICO_CAD"].iloc[0])
-        except Exception:
-            rj = 0
-        try:
-            sp = int(df_res.loc[df_res["LOCAL"].str.upper()=="SP", "FORNECEDORES_BÁSICO_CAD"].iloc[0])
-        except Exception:
-            sp = 0
-        try:
-            ita = int(df_res.loc[df_res["LOCAL"].str.lower().str.contains("itaj"), "FORNECEDORES_BÁSICO_CAD"].iloc[0])
-        except Exception:
-            ita = 0
+        rj = int(mapa.get("RJ", 0))
+        sp = int(mapa.get("SP", 0))
+        sc = int(mapa.get("SC", 0))
 
-        def _fmt(n): 
-            try: return f"{int(n):,}".replace(",", ".")
-            except: return "0"
-
+        _fmt = lambda n: f"{int(n):,}".replace(",", ".")
         k1.metric("RJ — fornecedores básicos (cad.)", _fmt(rj))
         k2.metric("SP — fornecedores básicos (cad.)", _fmt(sp))
-        k3.metric("Itajaí — fornecedores básicos (cad.)", _fmt(ita))
+        k3.metric("SC — fornecedores básicos (cad.)", _fmt(sc))
 
         with st.expander("Ver detalhes"):
-            st.dataframe(df_res, use_container_width=True, hide_index=True,
-                         column_config={"FORNECEDORES_BÁSICO_CAD": st.column_config.NumberColumn(format="%.0f")})
+            st.dataframe(
+                df_res[["LOCAL","FORNECEDORES_BÁSICO_CAD"]].sort_values("LOCAL"),
+                use_container_width=True, hide_index=True,
+                column_config={"FORNECEDORES_BÁSICO_CAD": st.column_config.NumberColumn(format="%.0f")}
+            )
     else:
         st.info("Sem dados para compor os contadores por local.")
-
+        
 # ---------- Estilo ----------
 st.markdown(
     """
@@ -398,4 +394,5 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
