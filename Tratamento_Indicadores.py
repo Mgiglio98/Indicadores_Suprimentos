@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from typing import Optional, List, Tuple
+import unicodedata
 
 _BI_LABEL = {
     1: "Jan–Fev", 2: "Jan–Fev", 3: "Mar–Abr", 4: "Mar–Abr", 5: "Mai–Jun", 6: "Mai–Jun",
@@ -404,11 +406,7 @@ def categorias_crescimento_yoy(df, anos=5, col_cat="INSUMO_CATEGORIA"):
     res["ULTIMO_YOY_PCT"] = res["ULTIMO_YOY_PCT"].round(2)
     return res.sort_values("MEDIA_YOY_PCT", ascending=False)
 
-import unicodedata
-import pandas as pd
-import numpy as np
-
-def _pick_col(df: pd.DataFrame, candidatos: list[str]) -> str | None:
+def _pick_col(df: pd.DataFrame, candidatos: List[str]) -> Optional[str]:
     up = {c.strip().upper(): c for c in df.columns}
     for cand in candidatos:
         k = cand.strip().upper()
@@ -443,8 +441,8 @@ def categorias_basicos_distintos(df: pd.DataFrame, col_cat: str = "INSUMO_CATEGO
     return out.reset_index(drop=True)
 
 def fornecedores_basicos_por_local(df_erp: pd.DataFrame,
-                                   df_forn: pd.DataFrame | None = None,
-                                   locais: tuple[str, ...] = ("RJ","SP","Itajaí")) -> pd.DataFrame:
+                                   df_forn: Optional[pd.DataFrame] = None,
+                                   locais: Tuple[str, ...] = ("RJ","SP","Itajaí")) -> pd.DataFrame:
     """
     Quantidade de empresas CADASTRADAS aptas (observadas vendendo BÁSICO no ERP) por local:
       - RJ/SP: compara por UF (obra OU fornecedor)
