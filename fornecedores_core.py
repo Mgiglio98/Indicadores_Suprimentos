@@ -102,3 +102,51 @@ def serie_fornecedores_ativos_ultimos_anos(df_erp: pd.DataFrame,
         "var_pct":      var_pct
     }
     return serie, resumo
+
+def serie_fornecedores_cadastrados_por_ano(df_forn: pd.DataFrame,
+                                           anos: int = 10,
+                                           col_id: str | None = None,
+                                           col_data_cad: str | None = None) -> pd.DataFrame:
+    """
+    Série anual de fornecedores CADASTRADOS (primeira data de cadastro por fornecedor).
+    Retorna df com colunas: ANO | FORNECEDORES_CADASTRADOS
+    """
+    df = df_forn.copy()
+
+    # Detecta ID do fornecedor
+    try:
+        col_id = col_id or _col(df, ["FORNECEDOR_CDG", "FORNECEDOR_ID", "COD_FORNECEDOR", "FORN_CNPJ", "CNPJ"])
+    except KeyError:
+        raise KeyError("Não encontrei coluna de ID do fornecedor.")
+
+    # Detecta data de cadastro (vários aliases comuns)
+    try:
+        col_data_cad = col_data_cad or _col(
+            df,
+            ["DATA_CADASTRO", "DT_CADASTRO", "DATA_INCLUSAO", "DT_INCLUSAO",
+             "CRIACAO", "DATA_CRIACAO", "CADASTRO_DATA", "INCLUSAO", "DT_CAD", "DATA"]
+        )
+    except KeyError:
+        raise KeyError("Não encontrei coluna de data de cadastro.")
+
+    df[col_data_cad] = pd.to_datetime(df[col_data_cad], errors="coerce")
+    base = df.dropna(subset=[col_data_cad]).copy()
+    if base.empty:
+        return pd.DataFrame(columns=["ANO", "FORNECEDORES_CADASTRADOS"])
+
+    # Primeiro cadastro por fornecedor
+    first = (base.sort_values(col_data_cad)
+                  .groupby(col_id, as_index=False)[col_data_cad].first())
+
+    # Filtro de anos (opcional)
+    if anos:
+        limite = pd.Timestamp.today() - pd.DateOffset(years=anos)
+        first = first[first[col_data_cad] >= limite]
+
+    first["ANO"] = first[col_data_cad].dt.year
+    serie = (first.groupby("ANO")[col_id]
+                  .nunique()
+                  .reset_index(name="FORNECEDORES_CADASTRADOS")
+                  .sort_values("ANO"))
+
+    return serie
