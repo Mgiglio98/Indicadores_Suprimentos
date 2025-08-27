@@ -200,11 +200,11 @@ with st.container(border=True):
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "VALOR_TOTAL":    st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
                     "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
-                    "PRCTTL_INSUMO": st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
-                    "TOTAL": st.column_config.NumberColumn("TOTAL", format="%.2f"),
-                },
+                    "PRCTTL_INSUMO":  st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
+                    "TOTAL":          st.column_config.NumberColumn("TOTAL", format="%.2f"),
+                }
             )
         else:
             st.info("Sem dados para exibir.")
@@ -240,8 +240,8 @@ with st.container(border=True):
             hide_index=True,
             column_config={
                 "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                "QTDE_OFS": st.column_config.NumberColumn("QTDE_OFS", format="%.0f"),
-            },
+                "QTDE_OFS":    st.column_config.NumberColumn("QTDE_OFS", format="%.0f"),
+            }
         )
     else:
         st.info("Sem dados para exibir.")
@@ -253,9 +253,7 @@ with st.container(border=True):
             df_mes,
             use_container_width=True,
             hide_index=True,
-            column_config={
-                "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-            },
+            column_config={"VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f")}
         )
     else:
         st.info("Sem dados para exibir.")
@@ -266,7 +264,7 @@ with st.container(border=True):
     try:
         serie, _resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
         if isinstance(serie, pd.DataFrame) and not serie.empty:
-            st.data_editor(serie, hide_index=True, use_container_width=True)
+            st.dataframe(serie, hide_index=True, use_container_width=True, column_config={"FORNECEDORES_ATIVOS": st.column_config.NumberColumn("FORNECEDORES_ATIVOS", format="%.0f")})
             st.bar_chart(data=serie, x="ANO", y="FORNECEDORES_ATIVOS", use_container_width=True)
         else:
             st.info("Sem dados para exibir.")
@@ -281,5 +279,6 @@ st.markdown("""
 section.main > div { padding-top: 0.25rem; }
 </style>
 """, unsafe_allow_html=True)
+
 
 
