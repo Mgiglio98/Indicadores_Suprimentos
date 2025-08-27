@@ -276,3 +276,68 @@ def meses_top3_volume_geral(df, top_n=3):
 
     out = agg.sort_values("VALOR_TOTAL", ascending=False).head(int(top_n))
     return out[["MES_ROTULO", "VALOR_TOTAL", "PART_%"]]
+
+def maior_compra_item_unico(df):
+    """
+    Retorna a linha (1 registro) com o MAIOR VALOR TOTAL de uma compra de item.
+    Colunas no retorno: INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_TOTAL
+    - Tenta usar PRCTTL_INSUMO como total; se não existir, calcula QTDE * PRECO_UNIT.
+    - É tolerante a aliases comuns de quantidade e preço unitário.
+    """
+    import pandas as pd
+
+    def _pick(colnames, dfcols):
+        for c in colnames:
+            if c in dfcols:
+                return c
+        return None
+
+    base = df.copy()
+
+    # Colunas de interesse
+    col_cod  = _pick(["INSUMO_CDG", "COD_INSUMO", "INSUMO_COD", "ITEM_CDG", "ITEM_CODIGO"], base.columns)
+    col_desc = _pick(["INSUMO_DESC", "ITEM_DESC", "DESCRICAO_INSUMO", "DESCRICAO"], base.columns)
+    col_qtd  = _pick(["ITEM_QTDSOLIC", "QTD_SOLIC", "QTDE_SOLICITADA", "QTDE", "QUANTIDADE", "ITEM_QTDE", "QTD"], base.columns)
+    col_tot  = _pick(["PRCTTL_INSUMO", "VALOR_TOTAL_ITEM", "TOTAL", "VLR_TOTAL", "VL_TOTAL"], base.columns)
+    col_pu   = _pick(["ITEM_PRCUNTPED", "PRECO_UNIT", "VLR_UNITARIO", "VL_UNIT", "PRECO_UNITARIO"], base.columns)
+
+    if not (col_cod and col_desc):
+        raise KeyError("Não encontrei colunas de código/descrição do insumo (esperado algo como INSUMO_CDG e INSUMO_DESC).")
+
+    # Garante tipos numéricos
+    if col_qtd:
+        base[col_qtd] = pd.to_numeric(base[col_qtd], errors="coerce")
+    if col_tot:
+        base[col_tot] = pd.to_numeric(base[col_tot], errors="coerce")
+    if col_pu:
+        base[col_pu]  = pd.to_numeric(base[col_pu], errors="coerce")
+
+    # Define total por linha
+    if col_tot:
+        base["_TOTAL_ITEM_"] = base[col_tot]
+    elif col_qtd and col_pu:
+        base["_TOTAL_ITEM_"] = base[col_qtd] * base[col_pu]
+    else:
+        raise KeyError("Não encontrei total do item (PRCTTL_INSUMO/TOTAL) nem consigo calcular via QTDE*PREÇO_UNIT.")
+
+    base = base.dropna(subset=["_TOTAL_ITEM_"]).copy()
+    if base.empty:
+        return pd.DataFrame(columns=["INSUMO_CDG", "INSUMO_DESC", "QUANTIDADE", "PRECO_TOTAL"])
+
+    # Ordena por maior total e seleciona 1
+    top = base.sort_values("_TOTAL_ITEM_", ascending=False).head(1)
+
+    # Monta saída
+    out = pd.DataFrame({
+        "INSUMO_CDG":  top[col_cod].astype("string"),
+        "INSUMO_DESC": top[col_desc].astype("string"),
+        "QUANTIDADE":  top[col_qtd] if col_qtd else pd.Series([pd.NA]),
+        "PRECO_TOTAL": top["_TOTAL_ITEM_"],
+    })
+
+    # Arredonda
+    out["PRECO_TOTAL"] = pd.to_numeric(out["PRECO_TOTAL"], errors="coerce").round(2)
+    if "QUANTIDADE" in out.columns:
+        out["QUANTIDADE"] = pd.to_numeric(out["QUANTIDADE"], errors="coerce")
+
+    return out
