@@ -11,7 +11,12 @@ def _format_brl(v): return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").re
 
 def carregar_bases():
     base_dir = Path(__file__).parent
-    df_erp = pd.read_excel(base_dir/"total_indicadores.xlsx", sheet_name="Planilha1", dtype={"INSUMO_CDG":"string", "FORNECEDOR_CDG":"string"})
+    df_erp = pd.read_excel(
+        base_dir/"total_indicadores.xlsx",
+        sheet_name="Planilha1",
+        dtype={"INSUMO_CDG":"string", "FORNECEDOR_CDG":"string"}
+    )
+    # reforço:
     if "FORNECEDOR_CDG" in df_erp.columns:
         df_erp["FORNECEDOR_CDG"] = df_erp["FORNECEDOR_CDG"].astype("string")
     df_bas = pd.read_excel(base_dir/"MateriaisBasicos.xlsx", sheet_name="Final", usecols=["Código"], dtype={"Código":"string"}).drop_duplicates()
@@ -137,3 +142,4 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
         .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
         .dropna())
     return int(s.nunique())
+
