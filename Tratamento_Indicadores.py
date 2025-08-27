@@ -406,104 +406,112 @@ def categorias_crescimento_yoy(df, anos=5, col_cat="INSUMO_CATEGORIA"):
     res["ULTIMO_YOY_PCT"] = res["ULTIMO_YOY_PCT"].round(2)
     return res.sort_values("MEDIA_YOY_PCT", ascending=False)
 
+def _norm_txt(s: str) -> str:
+    if s is None:
+        return ""
+    t = unicodedata.normalize("NFKD", str(s))
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    return t.strip().lower()
+
+def _split_tokens(text: str) -> set:
+    if text is None:
+        return set()
+    t = _norm_txt(text)
+    # separadores comuns: vírgula, ponto e vírgula, barra, pipe, “&”, “+”
+    for sep in [",", ";", "/", "|", "&", "+"]:
+        t = t.replace(sep, ",")
+    parts = [p.strip() for p in t.split(",") if p.strip()]
+    # remove tokens muito curtos
+    return {p for p in parts if len(p) > 1}
+
 def _pick_col(df: pd.DataFrame, candidatos: List[str]) -> Optional[str]:
     up = {c.strip().upper(): c for c in df.columns}
     for cand in candidatos:
         k = cand.strip().upper()
         if k in up:
             return up[k]
-        for kk, orig in up.items():  # substring fallback
-            if k in kk:
+        # fallback por substring
+        for K, orig in up.items():
+            if k in K:
                 return orig
     return None
 
-def _strip_accents_lower(s: pd.Series) -> pd.Series:
-    def _norm(x):
-        if pd.isna(x): return x
-        t = unicodedata.normalize("NFKD", str(x))
-        t = "".join(ch for ch in t if not unicodedata.combining(ch))
-        return t.strip().lower()
-    return s.astype("string").map(_norm)
+def _set_categorias_basicos(df_erp: pd.DataFrame, col_cat: str = "INSUMO_CATEGORIA") -> set:
+    """Categorias (normalizadas) observadas em itens BÁSICOS no ERP."""
+    if "TIPO_MATERIAL" not in df_erp.columns or col_cat not in df_erp.columns:
+        return set()
+    base = df_erp[df_erp["TIPO_MATERIAL"] == "BÁSICO"]
+    cats = base[col_cat].dropna().astype("string").unique().tolist()
+    return {_norm_txt(c) for c in cats if str(c).strip()}
 
-def categorias_basicos_distintos(df: pd.DataFrame, col_cat: str = "INSUMO_CATEGORIA") -> pd.DataFrame:
+def fornecedores_basicos_por_local_cadastro(df_forn: pd.DataFrame,
+                                            df_erp: pd.DataFrame,
+                                            locais: Tuple[str, ...] = ("RJ","SP","Itajaí"),
+                                            candidatos_col_cat_forn: Tuple[str, ...] = (
+                                                "CATEGORIAS", "CATEGORIA", "SEGMENTOS", "LINHA",
+                                                "LINHAS", "LINHA_PRODUTO", "AREAS", "ATIVIDADES",
+                                                "MATERIAIS", "GRUPOS", "FAMILIA", "FAMÍLIA"
+                                            )) -> pd.DataFrame:
     """
-    Retorna as categorias (distintas) de materiais marcados como BÁSICO.
-    Coluna esperada: TIPO_MATERIAL == 'BÁSICO'. Se não existir, assume vazio.
+    Conta fornecedores CADASTRADOS aptos a vender BÁSICO por local,
+    usando match FLEXÍVEL entre categorias do fornecedor (célula com múltiplas categorias)
+    e as categorias de básicos observadas no ERP.
+
+    - RJ/SP: por UF do fornecedor
+    - Itajaí: por município do fornecedor
     """
-    base = df.copy()
-    if "TIPO_MATERIAL" not in base.columns:
-        return pd.DataFrame(columns=["CATEGORIA"])
-    base = base[base["TIPO_MATERIAL"] == "BÁSICO"].copy()
-    if base.empty or col_cat not in base.columns:
-        return pd.DataFrame(columns=["CATEGORIA"])
-    out = (base[col_cat].dropna().astype("string").str.strip().drop_duplicates()
-           .to_frame(name="CATEGORIA").sort_values("CATEGORIA"))
-    return out.reset_index(drop=True)
-
-def fornecedores_basicos_por_local(df_erp: pd.DataFrame,
-                                   df_forn: Optional[pd.DataFrame] = None,
-                                   locais: Tuple[str, ...] = ("RJ","SP","Itajaí")) -> pd.DataFrame:
-    """
-    Quantidade de empresas CADASTRADAS aptas (observadas vendendo BÁSICO no ERP) por local:
-      - RJ/SP: compara por UF (obra OU fornecedor)
-      - Itajaí: compara por município (obra OU fornecedor), normalizado
-    Considera como 'cadastrada' se o FORNECEDOR_ID aparecer em df_forn (quando df_forn é fornecido).
-    Retorna: LOCAL | FORNECEDORES_BÁSICO_CAD
-    """
-    df = df_erp.copy()
-
-    # detecta colunas
-    col_forn_id = _pick_col(df, [
-        "FORNECEDOR_CDG","FORNECEDOR_ID","COD_FORNECEDOR","FORN_ID","FORN_CDG",
-        "FORN_CNPJ","CNPJ","PED_FORNECEDOR","FORNECEDOR"
-    ])
-    if not col_forn_id:
-        raise KeyError("Não encontrei coluna de identificador do fornecedor no ERP.")
-
-    col_uf_obra = _pick_col(df, ["EMPRD_UF","OBRA_UF","UF_OBRA","UF"])
-    col_uf_forn = _pick_col(df, ["FORNECEDOR_UF","FORN_UF","UF_FORN","UF"])
-
-    col_cidade_obra = _pick_col(df, ["EMPRD_MUN","EMPRD_CIDADE","OBRA_MUNICIPIO","OBRA_CIDADE","CIDADE_OBRA","MUNICIPIO_OBRA","MUNICIPIO","CIDADE"])
-    col_cidade_forn = _pick_col(df, ["FORNECEDOR_MUN","FORNECEDOR_CIDADE","CIDADE_FORN","MUNICIPIO_FORN","CIDADE","MUNICIPIO"])
-
-    # filtra básicos
-    if "TIPO_MATERIAL" not in df.columns:
-        return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
-    base = df[df["TIPO_MATERIAL"] == "BÁSICO"].copy()
-    if base.empty:
+    # categorias básicas (do ERP)
+    cat_bas = _set_categorias_basicos(df_erp, col_cat="INSUMO_CATEGORIA")
+    if not cat_bas:
         return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
 
-    # normaliza campos
-    base[col_forn_id] = base[col_forn_id].astype("string").str.strip()
-    if col_uf_obra: base[col_uf_obra] = base[col_uf_obra].astype("string").str.upper().str.strip()
-    if col_uf_forn: base[col_uf_forn] = base[col_uf_forn].astype("string").str.upper().str.strip()
-    if col_cidade_obra: base[col_cidade_obra] = _strip_accents_lower(base[col_cidade_obra])
-    if col_cidade_forn: base[col_cidade_forn] = _strip_accents_lower(base[col_cidade_forn])
+    df = df_forn.copy()
 
-    # conjunto de fornecedores cadastrados (interseção)
-    regist: set[str] = set()
-    if df_forn is not None and not df_forn.empty:
-        col_forn_cad = _pick_col(df_forn, ["FORNECEDOR_CDG","FORNECEDOR_ID","COD_FORNECEDOR","FORN_ID","FORN_CDG","FORN_CNPJ","CNPJ","FORNECEDOR"])
-        if col_forn_cad:
-            regist = set(df_forn[col_forn_cad].astype("string").str.strip().dropna().unique().tolist())
+    # detecção de colunas no cadastro
+    col_id = _pick_col(df, ["FORNECEDOR_CDG","FORNECEDOR_ID","COD_FORNECEDOR","FORN_ID","FORN_CDG","FORN_CNPJ","CNPJ","FORNECEDOR"])
+    if not col_id:
+        raise KeyError("Cadastro: não encontrei coluna de ID do fornecedor.")
+    col_uf = _pick_col(df, ["FORNECEDOR_UF","FORN_UF","UF"])
+    col_cidade = _pick_col(df, ["FORNECEDOR_MUN","FORNECEDOR_CIDADE","MUNICIPIO","CIDADE"])
+    col_cat_forn = None
+    for c in candidatos_col_cat_forn:
+        col_cat_forn = _pick_col(df, [c])
+        if col_cat_forn: break
+    if not col_cat_forn:
+        # Sem coluna de categorias no cadastro → não há como inferir aptidão
+        return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
 
-    def _count_for(loc: str) -> int:
-        loc_norm = unicodedata.normalize("NFKD", loc).encode("ascii","ignore").decode("ascii").strip().lower()
-        mask = pd.Series(False, index=base.index)
-        if loc.upper() in {"RJ","SP","SC","ES","MG","PR","RS","BA","PE","CE"}:  # UF
-            if col_uf_obra: mask |= base[col_uf_obra] == loc.upper()
-            if col_uf_forn: mask |= base[col_uf_forn] == loc.upper()
-        else:  # município
-            if col_cidade_obra: mask |= base[col_cidade_obra] == loc_norm
-            if col_cidade_forn: mask |= base[col_cidade_forn] == loc_norm
+    # normalizações
+    df[col_id] = df[col_id].astype("string").str.strip()
+    if col_uf: df[col_uf] = df[col_uf].astype("string").str.upper().str.strip()
+    if col_cidade: df[col_cidade] = df[col_cidade].astype("string").map(_norm_txt)
 
-        sub = base[mask].copy()
-        if sub.empty: return 0
-        ids = set(sub[col_forn_id].dropna().unique().tolist())
-        if regist:
-            ids = ids & regist  # mantém só cadastrados
-        return int(len(ids))
+    # marca fornecedor apto (pelo menos 1 token casa com alguma categoria básica)
+    def _is_apto(cel):
+        toks = _split_tokens(cel)
+        if not toks:
+            return False
+        for t in toks:
+            for b in cat_bas:
+                if t in b or b in t:
+                    return True
+        return False
 
-    rows = [{"LOCAL": loc, "FORNECEDORES_BÁSICO_CAD": _count_for(loc)} for loc in locais]
-    out = pd.DataFrame(rows)
+    df["_APTO_BASICO_"] = df[col_cat_forn].apply(_is_apto)
+
+    # contagem por local
+    def _count(loc: str) -> int:
+        loc_up = loc.upper()
+        loc_norm = _norm_txt(loc)
+        m = df["_APTO_BASICO_"] == True
+        if loc_up in {"RJ","SP","SC","ES","MG","PR","RS","BA","PE","CE"} and col_uf:
+            m &= (df[col_uf] == loc_up)
+        elif col_cidade:
+            m &= (df[col_cidade] == loc_norm)
+        else:
+            # sem informações geográficas
+            return 0
+        return int(df.loc[m, col_id].dropna().nunique())
+
+    out = pd.DataFrame([{"LOCAL": loc, "FORNECEDORES_BÁSICO_CAD": _count(loc)} for loc in locais])
     return out.sort_values("LOCAL").reset_index(drop=True)
