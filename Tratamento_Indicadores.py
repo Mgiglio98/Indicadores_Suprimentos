@@ -154,31 +154,46 @@ def percentual_ofs_basicas_ultimo_ano(df):
     pct = (bas / total * 100.0) if total else 0.0
     return pct, grp
 
-def periodo_maior_volume_bimestre(df, anos=10):
+def periodo_maior_volume_bimestre(df, anos=10, top_n=None, estacionalidade=False):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
     limite = pd.Timestamp.today() - pd.DateOffset(years=anos)
     base = df[df["OF_DATA_DT"] >= limite].copy()
     if base.empty:
-        return pd.DataFrame(columns=["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS"])
+        cols = ["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS", "PART_%"] if estacionalidade else ["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS"]
+        return pd.DataFrame(columns=cols)
+
     base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    base["BIMESTRE"] = np.ceil(base["OF_DATA_DT"].dt.month / 2).astype(int)
     base["BIMESTRE_ROTULO"] = base["OF_DATA_DT"].dt.month.map(_BI_LABEL)
-    res = (
-        base.groupby("BIMESTRE_ROTULO")
+
+    agg = (
+        base.groupby(["BIMESTRE", "BIMESTRE_ROTULO"])
         .agg(VALOR_TOTAL=("PRCTTL_INSUMO", "sum"), QTDE_OFS=("OF_CDG", "nunique"))
         .reset_index()
-        .sort_values("VALOR_TOTAL", ascending=False)
     )
-    res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
-    return res
+    agg["VALOR_TOTAL"] = pd.to_numeric(agg["VALOR_TOTAL"], errors="coerce")
 
-def mes_maior_volume_ultimo_ano(df):
+    if estacionalidade:
+        total = agg["VALOR_TOTAL"].sum()
+        agg["PART_%"] = (agg["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
+        out = agg.sort_values("BIMESTRE")[["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS", "PART_%"]].copy()
+    else:
+        agg = agg.sort_values("VALOR_TOTAL", ascending=False)
+        if top_n:
+            agg = agg.head(int(top_n))
+        out = agg[["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS"]].copy()
+
+    out["VALOR_TOTAL"] = out["VALOR_TOTAL"].round(2)
+    return out
+
+def mes_maior_volume_ultimo_ano(df, top_n=3):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
     limite = pd.Timestamp.today() - pd.DateOffset(years=1)
     base = df[df["OF_DATA_DT"] >= limite].copy()
     if base.empty:
-        return pd.DataFrame(columns=["ANO_MES", "VALOR_TOTAL"])
+        return pd.DataFrame(columns=["ANO_MES", "VALOR_TOTAL", "PART_%"])
     base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
     base["ANO_MES"] = base["OF_DATA_DT"].dt.to_period("M")
     res = (
@@ -187,7 +202,11 @@ def mes_maior_volume_ultimo_ano(df):
         .reset_index(name="VALOR_TOTAL")
         .sort_values("VALOR_TOTAL", ascending=False)
     )
+    total = res["VALOR_TOTAL"].sum()
+    res["PART_%"] = (res["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
     res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
+    if top_n:
+        res = res.head(int(top_n))
     return res
 
 def quantidade_empresas_que_venderam_ultimos_3_anos(df):
@@ -219,4 +238,5 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
         .dropna()
     )
     return int(s.nunique())
+
 
