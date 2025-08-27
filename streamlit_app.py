@@ -12,6 +12,7 @@ from Tratamento_Indicadores import (
     mes_maior_volume_ultimo_ano,
     _format_brl,
     quantidade_empresas_que_venderam_ultimos_3_anos,
+    mes_maior_volume_geral,
 )
 
 from fornecedores_core import (
@@ -205,34 +206,30 @@ with st.container(border=True):
     # Top 3 meses (últimos 12 meses)
     with c1:
         st.markdown("**Top 3 meses (últimos 12 meses)**")
-        df_mes = _safe(mes_maior_volume_ultimo_ano, df, top_n=3)
-        if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
-            df_mes = _round_cols(df_mes, ["VALOR_TOTAL", "PART_%"])
+        df_mes_12 = _safe(mes_maior_volume_ultimo_ano, df, top_n=3)
+        if isinstance(df_mes_12, pd.DataFrame) and not df_mes_12.empty:
+            df_mes_12 = _round_cols(df_mes_12, ["VALOR_TOTAL", "PART_%"])
             st.dataframe(
-                df_mes,
-                use_container_width=True,
-                hide_index=True,
+                df_mes_12, use_container_width=True, hide_index=True,
                 column_config={
                     "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
+                    "PART_%":      st.column_config.NumberColumn("PART_%", format="%.2f"),
                 },
             )
         else:
             st.info("Sem dados para exibir.")
 
-    # Top 3 bimestres (últimos 10 anos)
+    # Top 3 meses (geral)
     with c2:
-        st.markdown("**Top 3 bimestres (últimos 10 anos)**")
-        df_bi_top = _safe(periodo_maior_volume_bimestre, df, anos=10, top_n=3, estacionalidade=False)
-        if isinstance(df_bi_top, pd.DataFrame) and not df_bi_top.empty:
-            df_bi_top = _round_cols(df_bi_top, ["VALOR_TOTAL"])
+        st.markdown("**Top 3 meses (geral)**")
+        df_mes_all = _safe(mes_maior_volume_geral, df, top_n=3)
+        if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
+            df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
             st.dataframe(
-                df_bi_top,
-                use_container_width=True,
-                hide_index=True,
+                df_mes_all, use_container_width=True, hide_index=True,
                 column_config={
                     "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "QTDE_OFS":    st.column_config.NumberColumn("QTDE_OFS",    format="%.0f"),
+                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
                 },
             )
         else:
@@ -283,3 +280,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
