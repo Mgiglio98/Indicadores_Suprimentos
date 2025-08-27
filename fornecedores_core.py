@@ -124,7 +124,7 @@ def serie_fornecedores_cadastrados_por_ano(df_forn: pd.DataFrame,
         col_data_cad = col_data_cad or _col(
             df,
             ["DATA_CADASTRO", "DT_CADASTRO", "DATA_INCLUSAO", "DT_INCLUSAO",
-             "CRIACAO", "DATA_CRIACAO", "CADASTRO_DATA", "INCLUSAO", "DT_CAD", "DATA"]
+             "CRIACAO", "DATA_CRIACAO", "CADASTRO_DATA", "INCLUSAO", "DT_CAD", "DATA", "FORN_DTCADASTRO"]
         )
     except KeyError:
         raise KeyError("Não encontrei coluna de data de cadastro.")
