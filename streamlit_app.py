@@ -153,6 +153,11 @@ with st.container(border=True):
     with c1:
         st.caption("Últimos 10 anos")
         df_top10 = _safe(fornecedor_top_por_uf, df, anos=10)
+        st.dataframe(
+            df_top10, use_container_width=True,
+            column_config={
+                "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),})
         if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
             st.data_editor(_fmt_brl_col(df_top10, ["VALOR"]),
                            hide_index=True, use_container_width=True)
@@ -161,6 +166,11 @@ with st.container(border=True):
     with c2:
         st.caption("Últimos 2 anos")
         df_top2 = _safe(fornecedor_top_por_uf, df, anos=2)
+        st.dataframe(
+            df_top2, use_container_width=True,
+            column_config={
+                "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),})
         if isinstance(df_top2, pd.DataFrame) and not df_top2.empty:
             st.data_editor(_fmt_brl_col(df_top2, ["VALOR"]),
                            hide_index=True, use_container_width=True)
@@ -229,3 +239,4 @@ st.markdown("""
 section.main > div { padding-top: 0.25rem; }
 </style>
 """, unsafe_allow_html=True)
+
