@@ -16,12 +16,23 @@ def carregar_bases():
         sheet_name="Planilha1",
         dtype={"INSUMO_CDG":"string", "FORNECEDOR_CDG":"string"}
     )
-    # reforço:
     if "FORNECEDOR_CDG" in df_erp.columns:
         df_erp["FORNECEDOR_CDG"] = df_erp["FORNECEDOR_CDG"].astype("string")
     df_bas = pd.read_excel(base_dir/"MateriaisBasicos.xlsx", sheet_name="Final", usecols=["Código"], dtype={"Código":"string"}).drop_duplicates()
     df_erp["REQ_DATA"] = pd.to_datetime(df_erp["REQ_DATA"], errors="coerce")
     df_erp["OF_DATA"]  = pd.to_datetime(df_erp["OF_DATA"],  errors="coerce")
+    # força numérico nas colunas de valor
+    for col in ["PRCTTL_INSUMO", "ITEM_PRCUNTPED", "TOTAL"]:
+        if col in df_erp.columns:
+            df_erp[col] = pd.to_numeric(df_erp[col], errors="coerce")
+    
+    # garante texto e zeros à esquerda no FORNECEDOR_CDG
+    if "FORNECEDOR_CDG" in df_erp.columns:
+        df_erp["FORNECEDOR_CDG"] = df_erp["FORNECEDOR_CDG"].astype("string")
+        # detecta a largura máxima e preenche com zeros à esquerda
+        largura = int(df_erp["FORNECEDOR_CDG"].dropna().astype(str).str.len().max())
+        if largura > 0:
+            df_erp["FORNECEDOR_CDG"] = df_erp["FORNECEDOR_CDG"].str.zfill(largura)
     cod_basicos = set(df_bas["Código"].dropna())
     if "TIPO_MATERIAL" not in df_erp.columns:
         pos = df_erp.columns.get_loc("INSUMO_CDG")+1
@@ -46,6 +57,11 @@ def fornecedor_top_por_uf(df, anos=10, ufs=("RJ","SP")):
     out = pd.DataFrame(out)
     if not out.empty:
         out["FORNECEDOR_CDG"] = out["FORNECEDOR_CDG"].astype("string")
+        # padroniza zeros à esquerda conforme largura máxima
+        w = int(out["FORNECEDOR_CDG"].dropna().astype(str).str.len().max())
+        if w > 0:
+            out["FORNECEDOR_CDG"] = out["FORNECEDOR_CDG"].str.zfill(w)
+        out["VALOR"] = pd.to_numeric(out["VALOR"], errors="coerce").round(2)
     return out
 
 def maior_ordem_fornecimento(df):
@@ -61,6 +77,8 @@ def maior_ordem_fornecimento(df):
          .reset_index().sort_values("VALOR_TOTAL", ascending=False).head(1))
     if g.empty: return g
     g["DATA_OF"] = pd.to_datetime(g["DATA_OF"]).dt.strftime("%d/%m/%Y")
+    if "VALOR_TOTAL" in g.columns:
+        g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce").round(2)
     return g
 
 def menor_ordem_fornecimento(df):
@@ -76,11 +94,14 @@ def menor_ordem_fornecimento(df):
          .reset_index().sort_values("VALOR_TOTAL", ascending=True).head(1))
     if g.empty: return g
     g["DATA_OF"] = pd.to_datetime(g["DATA_OF"]).dt.strftime("%d/%m/%Y")
+    if "VALOR_TOTAL" in g.columns:
+        g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce").round(2)
     return g
 
 def valor_medio_por_of(df):
     tot = df.groupby("OF_CDG")["PRCTTL_INSUMO"].sum().reset_index(name="VALOR_TOTAL_OF")
     media = float(tot["VALOR_TOTAL_OF"].mean()) if not tot.empty else 0.0
+    tot["VALOR_TOTAL_OF"] = pd.to_numeric(tot["VALOR_TOTAL_OF"], errors="coerce").round(2)
     return media, tot
 
 def percentual_ofs_basicas_ultimo_ano(df):
@@ -141,5 +162,6 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
         .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
         .dropna())
     return int(s.nunique())
+
 
 
