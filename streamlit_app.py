@@ -18,6 +18,7 @@ from fornecedores_core import (
     carregar_fornecedores,
     total_empresas_cadastradas,
     serie_fornecedores_ativos_ultimos_anos,
+    serie_fornecedores_cadastrados_por_ano,
 )
 
 st.set_page_config(page_title="Suprimentos • Indicadores & Fornecedores", layout="wide")
@@ -102,18 +103,13 @@ with st.container(border=True):
     qtd_vend = qtd_vend if isinstance(qtd_vend, (int, float)) else 0
     k4.metric("Empresas que venderam (últimos 3 anos)", _format_int_br(qtd_vend))
 
-    # Variação de fornecedores ativos (últimos 10 anos no ERP)
+    # Cadastrados no último ano
     try:
-        serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
-        if isinstance(serie, pd.DataFrame) and not serie.empty:
-            var_txt = f"{resumo['var_abs']} ({resumo['var_pct']:.2f}%)"
-            k5.metric("Variação fornecedores ativos", var_txt,
-                      help=f"{resumo['primeiro_ano']} → {resumo['ultimo_ano']}")
-        else:
-            k5.metric("Variação fornecedores ativos", "—")
+        cad_serie = serie_fornecedores_cadastrados_por_ano(df_forn, anos=1)
+        cad_no_ano = int(cad_serie["FORNECEDORES_CADASTRADOS"].sum()) if not cad_serie.empty else 0
+        k5.metric("Cadastrados no último ano", f"{cad_no_ano}")
     except Exception:
-        k5.metric("Variação fornecedores ativos", "—")
-
+        pass
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
     st.subheader("🥇 TOP fornecedores por UF")
@@ -262,19 +258,16 @@ with st.container(border=True):
 
 # ---------- Série de Fornecedores Ativos ----------
 with st.container(border=True):
-    st.subheader("👥 Fornecedores ativos (série anual)")
+    st.subheader("👥 Fornecedores cadastrados por ano")
     try:
-        serie, _resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
-        if isinstance(serie, pd.DataFrame) and not serie.empty:
-            st.dataframe(
-                serie,
-                hide_index=True,
+        serie_cad = serie_fornecedores_cadastrados_por_ano(df_forn, anos=10)
+        if isinstance(serie_cad, pd.DataFrame) and not serie_cad.empty:
+            st.line_chart(
+                data=serie_cad,
+                x="ANO",
+                y="FORNECEDORES_CADASTRADOS",
                 use_container_width=True,
-                column_config={
-                    "FORNECEDORES_ATIVOS": st.column_config.NumberColumn("FORNECEDORES_ATIVOS", format="%.0f")
-                },
             )
-            st.bar_chart(data=serie, x="ANO", y="FORNECEDORES_ATIVOS", use_container_width=True)
         else:
             st.info("Sem dados para exibir.")
     except Exception as e:
@@ -290,8 +283,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
-
-
-
-
