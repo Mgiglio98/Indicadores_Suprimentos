@@ -57,13 +57,13 @@ with c2:
 
 media, detalhado = valor_medio_por_of(df_erp)
 st.metric("Valor médio por OF", _format_brl(media))
-with st.expander("OFs com total"):
-    st.dataframe(detalhado, use_container_width=True)
+#with st.expander("OFs com total"):
+    #st.dataframe(detalhado, use_container_width=True)
 
 pct, grupo = percentual_ofs_basicas_ultimo_ano(df_erp)
 st.metric("% de OFs BÁSICAS (último ano)", f"{pct:.2f}%")
-with st.expander("Classificação das OFs (último ano)"):
-    st.dataframe(grupo, use_container_width=True)
+#with st.expander("Classificação das OFs (último ano)"):
+    #st.dataframe(grupo, use_container_width=True)
 
 st.subheader("Bimestre com maior volume (padrão, últimos 10 anos)")
 st.dataframe(periodo_maior_volume_bimestre(df_erp, anos=10), use_container_width=True)
@@ -91,3 +91,4 @@ if not serie.empty:
         f"Variação {resumo['primeiro_ano']} → {resumo['ultimo_ano']}: "
         f"{resumo['var_abs']} fornecedores ({resumo['var_pct']:.2f}%)"
     )
+
