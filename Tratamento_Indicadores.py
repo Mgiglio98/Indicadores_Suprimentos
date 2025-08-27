@@ -250,5 +250,29 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
     )
     return int(s.nunique())
 
+def meses_top3_volume_geral(df, top_n=3):
+    """
+    Top N meses do ano (Jan..Dez) com maior volume somando TODOS os anos.
+    Retorna colunas: MES_ROTULO | VALOR_TOTAL | PART_%
+    """
+    df = df.copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+    base = df.dropna(subset=["OF_DATA_DT"]).copy()
+    if base.empty:
+        return pd.DataFrame(columns=["MES_ROTULO", "VALOR_TOTAL", "PART_%"])
 
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    base["MES"] = base["OF_DATA_DT"].dt.month
 
+    _MES_LABEL = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+
+    agg = (base.groupby("MES")["PRCTTL_INSUMO"]
+               .sum()
+               .reset_index(name="VALOR_TOTAL"))
+    total = agg["VALOR_TOTAL"].sum()
+    agg["PART_%"] = (agg["VALOR_TOTAL"]/total*100).round(2) if total else 0.0
+    agg["MES_ROTULO"] = agg["MES"].map(_MES_LABEL)
+    agg["VALOR_TOTAL"] = pd.to_numeric(agg["VALOR_TOTAL"], errors="coerce").round(2)
+
+    out = agg.sort_values("VALOR_TOTAL", ascending=False).head(int(top_n))
+    return out[["MES_ROTULO", "VALOR_TOTAL", "PART_%"]]
