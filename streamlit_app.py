@@ -14,6 +14,7 @@ from Tratamento_Indicadores import (
     quantidade_empresas_que_venderam_ultimos_3_anos,
     mes_maior_volume_geral,
     meses_top3_volume_geral,
+    maior_compra_item_unico,
 )
 
 from fornecedores_core import (
@@ -205,6 +206,24 @@ with st.container(border=True):
         else:
             st.info("Sem dados para exibir.")
 
+    with st.container(border=True):
+        st.subheader("🧱 Maior compra de um item (única linha)")
+        df_itemmax = _safe(maior_compra_item_unico, df)
+        if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
+            st.dataframe(
+                df_itemmax,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
+                    "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
+                    "QUANTIDADE":  st.column_config.NumberColumn("QTDE", format="%.2f"),
+                    "PRECO_TOTAL": st.column_config.NumberColumn("PREÇO TOTAL", format="%.2f"),
+                },
+            )
+        else:
+            st.info("Sem dados para exibir.")
+
 # ---------- Volumes por período ----------
 with st.container(border=True):
     st.subheader("📈 Volumes por período")
@@ -297,6 +316,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
