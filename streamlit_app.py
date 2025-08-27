@@ -210,7 +210,8 @@ with st.container(border=True):
         else:
             st.info("Sem dados para exibir.")
 
-    with st.subheader("🧱 Maior compra de um item (única linha)")
+    with st.container(border=True):
+        st.subheader("🧱 Maior compra de um item (única linha)")
         df_itemmax = _safe(maior_compra_item_unico, df)
         if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
             st.dataframe(
@@ -393,6 +394,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
