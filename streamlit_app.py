@@ -89,7 +89,7 @@ with st.container(border=True):
         k3.metric("Fornecedores cadastrados", "—")
         st.caption(f"Diagnóstico: {e}")
 
-   try:
+    try:
         serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
         if serie is not None and not serie.empty:
             var_txt = f"{resumo['var_abs']} ({resumo['var_pct']:.2f}%)"
@@ -254,4 +254,5 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
