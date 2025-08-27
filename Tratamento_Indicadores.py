@@ -11,12 +11,12 @@ def _format_brl(v): return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").re
 
 def carregar_bases():
     base_dir = Path(__file__).parent
-    df_erp = pd.read_excel(base_dir/"total_indicadores.xlsx", sheet_name="Planilha1", dtype={"INSUMO_CDG":"string"})
+    df_erp = pd.read_excel(base_dir/"total_indicadores.xlsx", sheet_name="Planilha1", dtype={"INSUMO_CDG":"string", "FORNECEDOR_CDG":"string"})
+    if "FORNECEDOR_CDG" in df_erp.columns:
+        df_erp["FORNECEDOR_CDG"] = df_erp["FORNECEDOR_CDG"].astype("string")
     df_bas = pd.read_excel(base_dir/"MateriaisBasicos.xlsx", sheet_name="Final", usecols=["Código"], dtype={"Código":"string"}).drop_duplicates()
-
     df_erp["REQ_DATA"] = pd.to_datetime(df_erp["REQ_DATA"], errors="coerce")
     df_erp["OF_DATA"]  = pd.to_datetime(df_erp["OF_DATA"],  errors="coerce")
-
     cod_basicos = set(df_bas["Código"].dropna())
     if "TIPO_MATERIAL" not in df_erp.columns:
         pos = df_erp.columns.get_loc("INSUMO_CDG")+1
@@ -38,6 +38,10 @@ def fornecedor_top_por_uf(df, anos=10, ufs=("RJ","SP")):
                         "FORNECEDOR_CDG": top.iloc[0]["FORNECEDOR_CDG"],
                         "FORNECEDOR_DESC": top.iloc[0]["FORNECEDOR_DESC"],
                         "VALOR": float(top.iloc[0]["PRCTTL_INSUMO"])})
+    out = pd.DataFrame(out)
+    if not out.empty:
+        out["FORNECEDOR_CDG"] = out["FORNECEDOR_CDG"].astype("string")
+    return out
     return pd.DataFrame(out)
 
 def maior_ordem_fornecimento(df):
@@ -105,3 +109,31 @@ def mes_maior_volume_ultimo_ano(df):
     return (base.groupby("ANO_MES")["PRCTTL_INSUMO"].sum()
             .reset_index(name="VALOR_TOTAL")
             .sort_values("VALOR_TOTAL", ascending=False))
+
+def quantidade_empresas_que_venderam_ultimos_3_anos(df):
+    df = df.copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df.get("OF_DATA"), errors="coerce")
+    limite = pd.Timestamp.today() - pd.DateOffset(years=3)
+    base = df[df["OF_DATA_DT"] >= limite].copy()
+    if base.empty:
+        return 0
+    if "PRCTTL_INSUMO" in base.columns:
+        v = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce").fillna(0)
+        base = base[v > 0]
+        if base.empty:
+            return 0
+    candidatos = [
+        "FORNECEDOR_CDG", "FORNECEDOR_ID", "COD_FORNECEDOR",
+        "FORN_CNPJ", "CNPJ", "PED_FORNECEDOR", "FORNECEDOR"]
+    col_forn = next((c for c in candidatos if c in base.columns), None)
+    if not col_forn:
+        raise KeyError(
+            f"Não encontrei coluna de fornecedor. Tente uma destas: {candidatos}. "
+            f"Disponíveis: {list(base.columns)}")
+    s = (
+        base[col_forn]
+        .astype("string")
+        .str.strip()
+        .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
+        .dropna())
+    return int(s.nunique())
