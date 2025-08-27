@@ -78,7 +78,7 @@ df_forn = _load_df_forn()
 df = df_erp.copy()
 
 # ---------- KPIs ----------
-w st.container(border=True):
+st.container(border=True):
     st.subheader("📊 Resumo")
     k1, k2, k3, k4, k5 = st.columns(5)
 
@@ -268,6 +268,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
