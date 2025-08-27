@@ -65,55 +65,7 @@ def _load_df_forn():
 
 df_erp = _load_df_erp()
 df_forn = _load_df_forn()
-
-# ---------- Filtros ----------
-with st.container(border=True):
-    st.subheader("🔎 Filtros")
-
-    col_data = None
-    try:
-        col_data = _col(df_erp, ["DATA_OF"])
-        df_erp[col_data] = pd.to_datetime(df_erp[col_data], errors="coerce")
-    except Exception:
-        pass
-
-    uf_cols = [c for c in ["EMPRD_UF", "FORNECEDOR_UF", "FORN_UF", "UF"] if c in df_erp.columns]
-    if uf_cols:
-        ufs_unicas = sorted(pd.unique(pd.concat([df_erp[c].dropna().astype(str) for c in uf_cols], ignore_index=True)))
-    else:
-        ufs_unicas = []
-
-    c1, c2 = st.columns([2, 3])
-    with c1:
-        sel_ufs = st.multiselect(
-            "UF (obra/fornecedor)",
-            ufs_unicas,
-            default=ufs_unicas[:2] if len(ufs_unicas) > 2 else ufs_unicas,
-        )
-    with c2:
-        if col_data is not None and not df_erp[col_data].dropna().empty:
-            min_year = int(df_erp[col_data].dt.year.min())
-            max_year = int(df_erp[col_data].dt.year.max())
-            anos_opts = list(range(min_year, max_year + 1))
-            ano_ini, ano_fim = st.select_slider(
-                "Período (ano)",
-                options=anos_opts,
-                value=(max(max_year - 1, min_year), max_year),
-            )
-        else:
-            ano_ini = ano_fim = None
-            st.caption("Sem coluna de data detectada — período não filtrado.")
-
-mask = pd.Series(True, index=df_erp.index)
-if sel_ufs and uf_cols:
-    m_ufs = pd.Series(False, index=df_erp.index)
-    for c in uf_cols:
-        m_ufs |= df_erp[c].astype(str).isin(sel_ufs)
-    mask &= m_ufs
-if col_data is not None and ano_ini is not None:
-    mask &= df_erp[col_data].dt.year.between(ano_ini, ano_fim)
-
-df = df_erp[mask].copy()
+df = df_erp.copy()
 
 # ---------- KPIs ----------
 with st.container(border=True):
@@ -137,9 +89,8 @@ with st.container(border=True):
         k3.metric("Fornecedores cadastrados", "—")
         st.caption(f"Diagnóstico: {e}")
 
-    try:
-        anos_span = (ano_fim - ano_ini + 1) if (ano_ini and ano_fim) else 10
-        serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=min(10, max(anos_span, 1)))
+   try:
+        serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
         if serie is not None and not serie.empty:
             var_txt = f"{resumo['var_abs']} ({resumo['var_pct']:.2f}%)"
             k4.metric(
@@ -303,3 +254,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
