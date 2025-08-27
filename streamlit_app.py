@@ -204,36 +204,61 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("📈 Volumes por período")
 
-    st.markdown("**Bimestre com maior volume (padrão: últimos 10 anos)**")
-    df_bi = _safe(periodo_maior_volume_bimestre, df, anos=10)
-    if isinstance(df_bi, pd.DataFrame) and not df_bi.empty:
-        df_bi = _round_cols(df_bi, ["VALOR_TOTAL"])
-        st.dataframe(
-            df_bi,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                "QTDE_OFS": st.column_config.NumberColumn("QTDE_OFS", format="%.0f"),
-            },
-        )
-    else:
-        st.info("Sem dados para exibir.")
+    c1, c2 = st.columns(2)
 
-    st.markdown("**Mês com maior volume (último ano)**")
-    df_mes = _safe(mes_maior_volume_ultimo_ano, df)
-    if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
-        df_mes = _round_cols(df_mes, ["VALOR_TOTAL"])
-        st.dataframe(
-            df_mes,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-            },
-        )
-    else:
-        st.info("Sem dados para exibir.")
+    # Top 3 meses (últimos 12 meses)
+    with c1:
+        st.markdown("**Top 3 meses (últimos 12 meses)**")
+        df_mes = _safe(mes_maior_volume_ultimo_ano, df, top_n=3)
+        if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
+            df_mes = _round_cols(df_mes, ["VALOR_TOTAL", "PART_%"])
+            st.dataframe(
+                df_mes,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
+                },
+            )
+        else:
+            st.info("Sem dados para exibir.")
+
+    # Top 3 bimestres (últimos 10 anos)
+    with c2:
+        st.markdown("**Top 3 bimestres (últimos 10 anos)**")
+        df_bi_top = _safe(periodo_maior_volume_bimestre, df, anos=10, top_n=3, estacionalidade=False)
+        if isinstance(df_bi_top, pd.DataFrame) and not df_bi_top.empty:
+            df_bi_top = _round_cols(df_bi_top, ["VALOR_TOTAL"])
+            st.dataframe(
+                df_bi_top,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "QTDE_OFS":    st.column_config.NumberColumn("QTDE_OFS",    format="%.0f"),
+                },
+            )
+        else:
+            st.info("Sem dados para exibir.")
+
+    # Estacionalidade por bimestre (share % em ordem de calendário)
+    with st.expander("Estacionalidade por bimestre (participação % nos últimos 10 anos)"):
+        df_bi_season = _safe(periodo_maior_volume_bimestre, df, anos=10, estacionalidade=True)
+        if isinstance(df_bi_season, pd.DataFrame) and not df_bi_season.empty:
+            df_bi_season = _round_cols(df_bi_season, ["VALOR_TOTAL", "PART_%"])
+            st.dataframe(
+                df_bi_season,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "QTDE_OFS":    st.column_config.NumberColumn("QTDE_OFS",    format="%.0f"),
+                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
+                },
+            )
+        else:
+            st.info("Sem dados para exibir.")
 
 # ---------- Série de Fornecedores Ativos ----------
 with st.container(border=True):
@@ -265,6 +290,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
