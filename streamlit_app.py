@@ -55,6 +55,13 @@ def _safe(fn, *a, **k):
         st.warning(f"Não consegui calcular **{fn.__name__}**: {e}")
         return None
 
+def _round_cols(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    df = df.copy()
+    for c in cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
+    return df
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def _load_df_erp():  return carregar_bases()
 
@@ -63,13 +70,6 @@ def _load_df_forn(): return carregar_fornecedores()
 
 df_erp  = _load_df_erp()
 df_forn = _load_df_forn()
-
-def _round_cols(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
-    df = df.copy()
-    for c in cols:
-        if c in df.columns:
-            df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
-    return df
 
 # ---------- Filtros no topo ----------
 with st.container(border=True):
@@ -189,8 +189,9 @@ with st.container(border=True):
 
     with c1:
         st.markdown("**🏆 Maior OF**")
-        df_max = _round_cols(df_max, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
+        df_max = _safe(maior_ordem_fornecimento, df)
         if isinstance(df_max, pd.DataFrame) and not df_max.empty:
+            df_max = _round_cols(df_max, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
             st.dataframe(
                 df_max,
                 use_container_width=True,
@@ -200,29 +201,30 @@ with st.container(border=True):
                     "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
                     "PRCTTL_INSUMO":  st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
                     "TOTAL":          st.column_config.NumberColumn("TOTAL", format="%.2f"),
-                }
+                },
             )
         else:
             st.info("Sem dados para exibir.")
 
     with c2:
         st.markdown("**🧩 Menor OF**")
-       df_min = _round_cols(df_min, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
+        df_min = _safe(menor_ordem_fornecimento, df)
         if isinstance(df_min, pd.DataFrame) and not df_min.empty:
+            df_min = _round_cols(df_min, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
             st.dataframe(
                 df_min,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "VALOR_TOTAL":    st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
                     "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
-                    "PRCTTL_INSUMO": st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
-                    "TOTAL": st.column_config.NumberColumn("TOTAL", format="%.2f"),
+                    "PRCTTL_INSUMO":  st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
+                    "TOTAL":          st.column_config.NumberColumn("TOTAL", format="%.2f"),
                 },
             )
         else:
             st.info("Sem dados para exibir.")
-
+            
 # ---------- Bloco: Volumes por período ----------
 with st.container(border=True):
     st.subheader("📈 Volumes por período")
@@ -278,6 +280,7 @@ st.markdown("""
 section.main > div { padding-top: 0.25rem; }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
