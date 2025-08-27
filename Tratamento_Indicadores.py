@@ -95,7 +95,7 @@ def maior_ordem_fornecimento(df):
             EMPRD_DESC=("EMPRD_DESC", "first"),
             FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
             DATA_OF=("OF_DATA_DT", "first"),
-            INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x)))),
+            #INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x)))),
             TOTAL_ITENS=("INSUMO_CDG", "nunique"),
         )
         .reset_index()
@@ -118,7 +118,7 @@ def menor_ordem_fornecimento(df):
             EMPRD_DESC=("EMPRD_DESC", "first"),
             FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
             DATA_OF=("OF_DATA_DT", "first"),
-            INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x)))),
+            #INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x)))),
             TOTAL_ITENS=("INSUMO_CDG", "nunique"),
         )
         .reset_index()
@@ -219,3 +219,4 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
         .dropna()
     )
     return int(s.nunique())
+
