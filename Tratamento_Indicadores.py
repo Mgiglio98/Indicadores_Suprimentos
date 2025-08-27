@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Optional, List, Tuple
 import unicodedata
+from typing import Optional, List, Tuple
 
 _BI_LABEL = {
     1: "Jan–Fev", 2: "Jan–Fev", 3: "Mar–Abr", 4: "Mar–Abr", 5: "Mai–Jun", 6: "Mai–Jun",
@@ -417,11 +417,9 @@ def _split_tokens(text: str) -> set:
     if text is None:
         return set()
     t = _norm_txt(text)
-    # separadores comuns: vírgula, ponto e vírgula, barra, pipe, “&”, “+”
     for sep in [",", ";", "/", "|", "&", "+"]:
         t = t.replace(sep, ",")
     parts = [p.strip() for p in t.split(",") if p.strip()]
-    # remove tokens muito curtos
     return {p for p in parts if len(p) > 1}
 
 def _pick_col(df: pd.DataFrame, candidatos: List[str]) -> Optional[str]:
@@ -436,58 +434,58 @@ def _pick_col(df: pd.DataFrame, candidatos: List[str]) -> Optional[str]:
                 return orig
     return None
 
+def categorias_basicos_distintos(df: pd.DataFrame, col_cat: str = "INSUMO_CATEGORIA") -> pd.DataFrame:
+    base = df.copy()
+    if "TIPO_MATERIAL" not in base.columns:
+        return pd.DataFrame(columns=["CATEGORIA"])
+    base = base[base["TIPO_MATERIAL"] == "BÁSICO"].copy()
+    if base.empty or col_cat not in base.columns:
+        return pd.DataFrame(columns=["CATEGORIA"])
+    out = (base[col_cat].dropna().astype("string").str.strip().drop_duplicates()
+           .to_frame(name="CATEGORIA").sort_values("CATEGORIA"))
+    return out.reset_index(drop=True)
+
 def _set_categorias_basicos(df_erp: pd.DataFrame, col_cat: str = "INSUMO_CATEGORIA") -> set:
-    """Categorias (normalizadas) observadas em itens BÁSICOS no ERP."""
     if "TIPO_MATERIAL" not in df_erp.columns or col_cat not in df_erp.columns:
         return set()
     base = df_erp[df_erp["TIPO_MATERIAL"] == "BÁSICO"]
     cats = base[col_cat].dropna().astype("string").unique().tolist()
     return {_norm_txt(c) for c in cats if str(c).strip()}
 
-def fornecedores_basicos_por_local_cadastro(df_forn: pd.DataFrame,
-                                            df_erp: pd.DataFrame,
-                                            locais: Tuple[str, ...] = ("RJ","SP","Itajaí"),
-                                            candidatos_col_cat_forn: Tuple[str, ...] = (
-                                                "CATEGORIAS", "CATEGORIA", "SEGMENTOS", "LINHA",
-                                                "LINHAS", "LINHA_PRODUTO", "AREAS", "ATIVIDADES",
-                                                "MATERIAIS", "GRUPOS", "FAMILIA", "FAMÍLIA"
-                                            )) -> pd.DataFrame:
-    """
-    Conta fornecedores CADASTRADOS aptos a vender BÁSICO por local,
-    usando match FLEXÍVEL entre categorias do fornecedor (célula com múltiplas categorias)
-    e as categorias de básicos observadas no ERP.
-
-    - RJ/SP: por UF do fornecedor
-    - Itajaí: por município do fornecedor
-    """
-    # categorias básicas (do ERP)
+def fornecedores_basicos_por_local_cadastro(
+    df_forn: pd.DataFrame,
+    df_erp: pd.DataFrame,
+    locais: Tuple[str, ...] = ("RJ","SP","Itajaí"),
+    candidatos_col_cat_forn: Tuple[str, ...] = (
+        "CATEGORIAS", "CATEGORIA", "SEGMENTOS", "LINHA", "LINHAS",
+        "LINHA_PRODUTO", "AREAS", "ATIVIDADES", "MATERIAIS", "GRUPOS",
+        "FAMILIA", "FAMÍLIA"
+    )
+) -> pd.DataFrame:
     cat_bas = _set_categorias_basicos(df_erp, col_cat="INSUMO_CATEGORIA")
     if not cat_bas:
         return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
 
     df = df_forn.copy()
-
-    # detecção de colunas no cadastro
     col_id = _pick_col(df, ["FORNECEDOR_CDG","FORNECEDOR_ID","COD_FORNECEDOR","FORN_ID","FORN_CDG","FORN_CNPJ","CNPJ","FORNECEDOR"])
     if not col_id:
         raise KeyError("Cadastro: não encontrei coluna de ID do fornecedor.")
     col_uf = _pick_col(df, ["FORNECEDOR_UF","FORN_UF","UF"])
     col_cidade = _pick_col(df, ["FORNECEDOR_MUN","FORNECEDOR_CIDADE","MUNICIPIO","CIDADE"])
+
     col_cat_forn = None
     for c in candidatos_col_cat_forn:
         col_cat_forn = _pick_col(df, [c])
-        if col_cat_forn: break
+        if col_cat_forn:
+            break
     if not col_cat_forn:
-        # Sem coluna de categorias no cadastro → não há como inferir aptidão
         return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
 
-    # normalizações
     df[col_id] = df[col_id].astype("string").str.strip()
     if col_uf: df[col_uf] = df[col_uf].astype("string").str.upper().str.strip()
     if col_cidade: df[col_cidade] = df[col_cidade].astype("string").map(_norm_txt)
 
-    # marca fornecedor apto (pelo menos 1 token casa com alguma categoria básica)
-    def _is_apto(cel):
+    def _is_apto(cel) -> bool:
         toks = _split_tokens(cel)
         if not toks:
             return False
@@ -499,7 +497,6 @@ def fornecedores_basicos_por_local_cadastro(df_forn: pd.DataFrame,
 
     df["_APTO_BASICO_"] = df[col_cat_forn].apply(_is_apto)
 
-    # contagem por local
     def _count(loc: str) -> int:
         loc_up = loc.upper()
         loc_norm = _norm_txt(loc)
@@ -509,7 +506,6 @@ def fornecedores_basicos_por_local_cadastro(df_forn: pd.DataFrame,
         elif col_cidade:
             m &= (df[col_cidade] == loc_norm)
         else:
-            # sem informações geográficas
             return 0
         return int(df.loc[m, col_id].dropna().nunique())
 
