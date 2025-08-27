@@ -281,69 +281,72 @@ def meses_top3_volume_geral(df, top_n=3):
 
 def maior_compra_item_unico(df):
     """
-    Retorna a linha (1 registro) com o MAIOR VALOR TOTAL de uma compra de item.
-    Colunas no retorno: INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_TOTAL
-    - Tenta usar PRCTTL_INSUMO como total; se não existir, calcula QTDE * PRECO_UNIT.
-    - É tolerante a aliases comuns de quantidade e preço unitário.
+    Retorna 1 linha com a maior compra de item:
+    INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_TOTAL
+    - Se QTDE não existir, calcula via PRECO_TOTAL / PRECO_UNIT.
     """
     import pandas as pd
 
-    def _pick(colnames, dfcols):
-        for c in colnames:
-            if c in dfcols:
-                return c
+    def _pick(cands, cols):
+        for c in cands:
+            if c in cols: return c
         return None
 
     base = df.copy()
+    cols = base.columns
 
-    # Colunas de interesse
-    col_cod  = _pick(["INSUMO_CDG", "COD_INSUMO", "INSUMO_COD", "ITEM_CDG", "ITEM_CODIGO"], base.columns)
-    col_desc = _pick(["INSUMO_DESC", "ITEM_DESC", "DESCRICAO_INSUMO", "DESCRICAO"], base.columns)
-    col_qtd  = _pick(["ITEM_QTDSOLIC", "QTD_SOLIC", "QTDE_SOLICITADA", "QTDE", "QUANTIDADE", "ITEM_QTDE", "QTD"], base.columns)
-    col_tot  = _pick(["PRCTTL_INSUMO", "VALOR_TOTAL_ITEM", "TOTAL", "VLR_TOTAL", "VL_TOTAL"], base.columns)
-    col_pu   = _pick(["ITEM_PRCUNTPED", "PRECO_UNIT", "VLR_UNITARIO", "VL_UNIT", "PRECO_UNITARIO"], base.columns)
+    col_cod  = _pick(["INSUMO_CDG","COD_INSUMO","INSUMO_COD","ITEM_CDG","ITEM_CODIGO"], cols)
+    col_desc = _pick(["INSUMO_DESC","ITEM_DESC","DESCRICAO_INSUMO","DESCRICAO"], cols)
+    col_qtd  = _pick([
+        "ITEM_QTDSOLIC","QTD_SOLIC","QTDE_SOLICITADA","QTDE","QUANTIDADE",
+        "ITEM_QTDE","QTD","QTD_ITEM","QTD_PEDIDA","QTD_REQUISITADA"
+    ], cols)
+    col_tot  = _pick(["PRCTTL_INSUMO","VALOR_TOTAL_ITEM","TOTAL","VLR_TOTAL","VL_TOTAL"], cols)
+    col_pu   = _pick(["ITEM_PRCUNTPED","PRECO_UNIT","VLR_UNITARIO","VL_UNIT","PRECO_UNITARIO"], cols)
 
     if not (col_cod and col_desc):
-        raise KeyError("Não encontrei colunas de código/descrição do insumo (esperado algo como INSUMO_CDG e INSUMO_DESC).")
+        raise KeyError("Faltam colunas de código/descrição do item (ex.: INSUMO_CDG / INSUMO_DESC).")
 
-    # Garante tipos numéricos
-    if col_qtd:
-        base[col_qtd] = pd.to_numeric(base[col_qtd], errors="coerce")
-    if col_tot:
-        base[col_tot] = pd.to_numeric(base[col_tot], errors="coerce")
-    if col_pu:
-        base[col_pu]  = pd.to_numeric(base[col_pu], errors="coerce")
+    # numéricos
+    if col_qtd: base[col_qtd] = pd.to_numeric(base[col_qtd], errors="coerce")
+    if col_tot: base[col_tot] = pd.to_numeric(base[col_tot], errors="coerce")
+    if col_pu:  base[col_pu]  = pd.to_numeric(base[col_pu],  errors="coerce")
 
-    # Define total por linha
+    # total por linha
     if col_tot:
         base["_TOTAL_ITEM_"] = base[col_tot]
     elif col_qtd and col_pu:
         base["_TOTAL_ITEM_"] = base[col_qtd] * base[col_pu]
     else:
-        raise KeyError("Não encontrei total do item (PRCTTL_INSUMO/TOTAL) nem consigo calcular via QTDE*PREÇO_UNIT.")
+        raise KeyError("Não encontrei TOTAL do item e não consigo calcular via QTDE*PREÇO_UNIT.")
 
     base = base.dropna(subset=["_TOTAL_ITEM_"]).copy()
     if base.empty:
-        return pd.DataFrame(columns=["INSUMO_CDG", "INSUMO_DESC", "QUANTIDADE", "PRECO_TOTAL"])
+        return pd.DataFrame(columns=["INSUMO_CDG","INSUMO_DESC","QUANTIDADE","PRECO_TOTAL"])
 
-    # Ordena por maior total e seleciona 1
-    top = base.sort_values("_TOTAL_ITEM_", ascending=False).head(1)
+    # pega o maior e alinha índice
+    top = base.sort_values("_TOTAL_ITEM_", ascending=False).head(1).reset_index(drop=True)
 
-    # Monta saída
-    out = pd.DataFrame({
-        "INSUMO_CDG":  top[col_cod].astype("string"),
-        "INSUMO_DESC": top[col_desc].astype("string"),
-        "QUANTIDADE":  top[col_qtd] if col_qtd else pd.Series([pd.NA]),
-        "PRECO_TOTAL": top["_TOTAL_ITEM_"],
-    })
+    # calcula QTDE se não houver coluna
+    quantidade = None
+    if col_qtd and pd.notna(top.at[0, col_qtd]):
+        quantidade = float(top.at[0, col_qtd])
+    elif col_pu and pd.notna(top.at[0, col_pu]) and float(top.at[0, col_pu]) != 0:
+        quantidade = float(top.at[0, "_TOTAL_ITEM_"]) / float(top.at[0, col_pu])
 
-    # Arredonda
+    out = pd.DataFrame([{
+        "INSUMO_CDG":  str(top.at[0, col_cod]) if col_cod else None,
+        "INSUMO_DESC": str(top.at[0, col_desc]) if col_desc else None,
+        "QUANTIDADE":  quantidade,
+        "PRECO_TOTAL": float(top.at[0, "_TOTAL_ITEM_"]),
+    }])
+
     out["PRECO_TOTAL"] = pd.to_numeric(out["PRECO_TOTAL"], errors="coerce").round(2)
     if "QUANTIDADE" in out.columns:
-        out["QUANTIDADE"] = pd.to_numeric(out["QUANTIDADE"], errors="coerce")
+        out["QUANTIDADE"] = pd.to_numeric(out["QUANTIDADE"], errors="coerce").round(2)
 
     return out
-
+    
 def categorias_mais_compradas_ultimos_anos(df, anos=5, col_cat="INSUMO_CATEGORIA"):
     """
     Top de categorias por valor total nos últimos `anos`.
@@ -494,3 +497,4 @@ def fornecedores_basicos_por_local_cadastro(
         out.append({"LOCAL": uf, "FORNECEDORES_BÁSICO_CAD": q})
 
     return pd.DataFrame(out).sort_values("LOCAL").reset_index(drop=True)
+
