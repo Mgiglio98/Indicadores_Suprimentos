@@ -15,6 +15,8 @@ from Tratamento_Indicadores import (
     mes_maior_volume_geral,
     meses_top3_volume_geral,
     maior_compra_item_unico,
+    categorias_mais_compradas_ultimos_anos,
+    categorias_crescimento_yoy,
 )
 
 from fornecedores_core import (
@@ -306,6 +308,40 @@ with st.container(border=True):
     else:
         st.info("Sem dados para exibir nos últimos 10 anos.")
 
+# ---------- Série de Categorias ----------
+with st.container(border=True):
+    st.subheader("📦 Categorias de materiais")
+
+    c1, c2 = st.columns(2)
+
+    # Top categorias (últimos 5 anos)
+    with c1:
+        st.markdown("**Mais compradas (últimos 5 anos)**")
+        df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
+        if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
+            # exibe top 8 para não poluir
+            toplot = df_cat5.head(8).copy()
+            st.bar_chart(data=toplot, x="CATEGORIA", y="VALOR_TOTAL", use_container_width=True)
+            top = df_cat5.iloc[0]
+            st.caption(f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({top['PART_%']:.2f}%)")
+        else:
+            st.info("Sem dados para exibir.")
+
+    # Maior crescimento YoY (média) por categoria (últimos 5 anos)
+    with c2:
+        st.markdown("**Maior crescimento YoY (média, últimos 5 anos)**")
+        df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
+        if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
+            toplot = df_yoy.head(8).copy()
+            st.bar_chart(data=toplot, x="CATEGORIA", y="MEDIA_YOY_PCT", use_container_width=True)
+            topg = df_yoy.iloc[0]
+            st.caption(
+                f"Top crescimento: **{topg['CATEGORIA']}** — {topg['MEDIA_YOY_PCT']:.2f}% a.a. "
+                f"(último YoY: {topg['ULTIMO_YOY_PCT']:.2f}%; período {int(topg['PRIMEIRO_ANO'])}–{int(topg['ULTIMO_ANO'])})"
+            )
+        else:
+            st.info("Sem dados para exibir.")
+
 # ---------- Estilo ----------
 st.markdown(
     """
@@ -316,11 +352,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
-
-
-
-
-
-
-
