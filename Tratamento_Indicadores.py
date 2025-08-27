@@ -455,60 +455,42 @@ def _set_categorias_basicos(df_erp: pd.DataFrame, col_cat: str = "INSUMO_CATEGOR
 def fornecedores_basicos_por_local_cadastro(
     df_forn: pd.DataFrame,
     df_erp: pd.DataFrame,
-    locais: Tuple[str, ...] = ("RJ","SP","SC"),
-    candidatos_col_cat_forn: Tuple[str, ...] = (
-        "CATEGORIAS", "CATEGORIA", "SEGMENTOS", "LINHA", "LINHAS",
-        "LINHA_PRODUTO", "AREAS", "ATIVIDADES", "MATERIAIS", "GRUPOS",
-        "FAMILIA", "FAMÍLIA"
-    )
+    locais: tuple[str, ...] = ("RJ", "SP", "SC"),
 ) -> pd.DataFrame:
+    # categorias "básico" observadas no ERP (INSUMO_CATEGORIA)
     cat_bas = _set_categorias_basicos(df_erp, col_cat="INSUMO_CATEGORIA")
     if not cat_bas:
-        return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
+        return pd.DataFrame(columns=["LOCAL", "FORNECEDORES_BÁSICO_CAD"])
+
+    # exigidos no cadastro
+    if "FORN_UF" not in df_forn.columns or "CATEGORIAS" not in df_forn.columns:
+        raise KeyError("No cadastro preciso das colunas FORN_UF e CATEGORIAS.")
 
     df = df_forn.copy()
-    col_id = _pick_col(df, ["FORNECEDOR_CDG","FORNECEDOR_ID","COD_FORNECEDOR","FORN_ID","FORN_CDG","FORN_CNPJ","CNPJ","FORNECEDOR"])
-    if not col_id:
-        raise KeyError("Cadastro: não encontrei coluna de ID do fornecedor.")
-    col_uf = _pick_col(df, ["FORNECEDOR_UF","FORN_UF","UF"])
-    col_cidade = _pick_col(df, ["FORNECEDOR_MUN","FORNECEDOR_CIDADE","MUNICIPIO","CIDADE", "FORN_UF"])
+    # tenta achar um ID p/ contar distintos; se não achar, conta linhas
+    col_id = _pick_col(df, [
+        "FORNECEDOR_CDG","FORNECEDOR_ID","COD_FORNECEDOR",
+        "FORN_CNPJ","CNPJ","FORNECEDOR"
+    ])
 
-    col_cat_forn = None
-    for c in candidatos_col_cat_forn:
-        col_cat_forn = _pick_col(df, [c])
-        if col_cat_forn:
-            break
-    if not col_cat_forn:
-        return pd.DataFrame(columns=["LOCAL","FORNECEDORES_BÁSICO_CAD"])
-
-    df[col_id] = df[col_id].astype("string").str.strip()
-    if col_uf: df[col_uf] = df[col_uf].astype("string").str.upper().str.strip()
-    if col_cidade: df[col_cidade] = df[col_cidade].astype("string").map(_norm_txt)
+    df["FORN_UF"]   = df["FORN_UF"].astype("string").str.upper().str.strip()
+    df["CATEGORIAS"] = df["CATEGORIAS"].astype("string")
 
     def _is_apto(cel) -> bool:
-        toks = _split_tokens(cel)
-        if not toks:
-            return False
-        for t in toks:
-            for b in cat_bas:
-                if t in b or b in t:
-                    return True
-        return False
+        toks = _split_tokens(cel)        # já separa por vírgula/;//|/&/+
+        if not toks: return False
+        # match aproximado: token dentro da categoria básica (ou vice-versa)
+        return any(any(t in b or b in t for b in cat_bas) for t in toks)
 
-    df["_APTO_BASICO_"] = df[col_cat_forn].apply(_is_apto)
+    df["_APTO_BASICO_"] = df["CATEGORIAS"].apply(_is_apto)
 
-    def _count(loc: str) -> int:
-        loc_up = loc.upper()
-        loc_norm = _norm_txt(loc)
-        m = df["_APTO_BASICO_"] == True
-        if loc_up in {"RJ","SP","SC","ES","MG","PR","RS","BA","PE","CE"} and col_uf:
-            m &= (df[col_uf] == loc_up)
-        elif col_cidade:
-            m &= (df[col_cidade] == loc_norm)
+    out = []
+    for uf in locais:
+        m = (df["_APTO_BASICO_"]) & (df["FORN_UF"] == uf.upper())
+        if col_id:
+            q = int(df.loc[m, col_id].astype("string").dropna().nunique())
         else:
-            return 0
-        return int(df.loc[m, col_id].dropna().nunique())
+            q = int(m.sum())  # fallback: conta linhas
+        out.append({"LOCAL": uf, "FORNECEDORES_BÁSICO_CAD": q})
 
-    out = pd.DataFrame([{"LOCAL": loc, "FORNECEDORES_BÁSICO_CAD": _count(loc)} for loc in locais])
-    return out.sort_values("LOCAL").reset_index(drop=True)
-
+    return pd.DataFrame(out).sort_values("LOCAL").reset_index(drop=True)
