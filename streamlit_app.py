@@ -55,6 +55,12 @@ def _round_cols(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
     return df
+    
+def _format_int_br(n) -> str:
+    try:
+        return f"{int(n):,}".replace(",", ".")
+    except Exception:
+        return "0"
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _load_df_erp():
@@ -73,16 +79,17 @@ with st.container(border=True):
     st.subheader("📊 Resumo")
     k1, k2, k3, k4, k5 = st.columns(5)
 
+    # Valor médio por OF
     vm = _safe(valor_medio_por_of, df)
-    if vm:
-        media, _det = vm
-        k1.metric("Valor médio por OF", _format_brl(round(media, 2)))
+    media = vm[0] if vm and isinstance(vm, tuple) else 0
+    k1.metric("Valor médio por OF", _format_brl(round(media, 2)))
 
+    # % OFs básicas (último ano)
     pct_grp = _safe(percentual_ofs_basicas_ultimo_ano, df)
-    if pct_grp:
-        pct, _g = pct_grp
-        k2.metric("% de OFs BÁSICAS (último ano)", f"{pct:.2f}%")
+    pct = pct_grp[0] if pct_grp and isinstance(pct_grp, tuple) else 0.0
+    k2.metric("% de OFs BÁSICAS (último ano)", f"{pct:.2f}%")
 
+    # Fornecedores cadastrados (base de cadastro)
     try:
         total_cad = total_empresas_cadastradas(df_forn)
         k3.metric("Fornecedores cadastrados", f"{total_cad}")
@@ -90,22 +97,22 @@ with st.container(border=True):
         k3.metric("Fornecedores cadastrados", "—")
         st.caption(f"Diagnóstico: {e}")
 
+    # NOVO KPI: Empresas que venderam (últimos 3 anos)
     qtd_vend = _safe(quantidade_empresas_que_venderam_ultimos_3_anos, df)
-    k4.metric("Empresas que venderam (últimos 3 anos)", _format_int_br(qtd_vend if isinstance(qtd_vend, (int, float)) else 0))
-    
+    qtd_vend = qtd_vend if isinstance(qtd_vend, (int, float)) else 0
+    k4.metric("Empresas que venderam (últimos 3 anos)", _format_int_br(qtd_vend))
+
+    # Variação de fornecedores ativos (últimos 10 anos no ERP)
     try:
         serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
-        if serie is not None and not serie.empty:
+        if isinstance(serie, pd.DataFrame) and not serie.empty:
             var_txt = f"{resumo['var_abs']} ({resumo['var_pct']:.2f}%)"
-            k5.metric(
-                "Variação fornecedores ativos",
-                var_txt,
-                help=f"{resumo['primeiro_ano']} → {resumo['ultimo_ano']}",
-            )
+            k5.metric("Variação fornecedores ativos", var_txt,
+                      help=f"{resumo['primeiro_ano']} → {resumo['ultimo_ano']}")
         else:
-            k4.metric("Variação fornecedores ativos", "—")
+            k5.metric("Variação fornecedores ativos", "—")
     except Exception:
-        k4.metric("Variação fornecedores ativos", "—")
+        k5.metric("Variação fornecedores ativos", "—")
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
@@ -258,6 +265,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
