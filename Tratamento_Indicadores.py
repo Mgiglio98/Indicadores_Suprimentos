@@ -196,18 +196,29 @@ def mes_maior_volume_ultimo_ano(df, top_n=3):
         return pd.DataFrame(columns=["ANO_MES", "VALOR_TOTAL", "PART_%"])
     base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
     base["ANO_MES"] = base["OF_DATA_DT"].dt.to_period("M")
-    res = (
-        base.groupby("ANO_MES")["PRCTTL_INSUMO"]
-        .sum()
-        .reset_index(name="VALOR_TOTAL")
-        .sort_values("VALOR_TOTAL", ascending=False)
-    )
+    res = (base.groupby("ANO_MES")["PRCTTL_INSUMO"].sum()
+           .reset_index(name="VALOR_TOTAL")
+           .sort_values("VALOR_TOTAL", ascending=False))
     total = res["VALOR_TOTAL"].sum()
     res["PART_%"] = (res["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
     res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
-    if top_n:
-        res = res.head(int(top_n))
-    return res
+    return res.head(int(top_n))
+
+def mes_maior_volume_geral(df, top_n=3):
+    df = df.copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+    base = df.dropna(subset=["OF_DATA_DT"]).copy()
+    if base.empty:
+        return pd.DataFrame(columns=["ANO_MES", "VALOR_TOTAL", "PART_%"])
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    base["ANO_MES"] = base["OF_DATA_DT"].dt.to_period("M")
+    res = (base.groupby("ANO_MES")["PRCTTL_INSUMO"].sum()
+           .reset_index(name="VALOR_TOTAL")
+           .sort_values("VALOR_TOTAL", ascending=False))
+    total = res["VALOR_TOTAL"].sum()
+    res["PART_%"] = (res["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
+    res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
+    return res.head(int(top_n))
 
 def quantidade_empresas_que_venderam_ultimos_3_anos(df):
     df = df.copy()
@@ -238,5 +249,6 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
         .dropna()
     )
     return int(s.nunique())
+
 
 
