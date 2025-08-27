@@ -19,6 +19,7 @@ from Tratamento_Indicadores import (
     categorias_crescimento_yoy,
     categorias_basicos_distintos,
     fornecedores_basicos_por_local,
+    fornecedores_basicos_por_local_cadastro,
 )
 
 from fornecedores_core import (
@@ -357,7 +358,7 @@ with st.container(border=True):
 
     # 2) & 3) Contagem de fornecedores CADASTRADOS capazes de vender básico por local
     st.markdown("**Fornecedores cadastrados aptos (básico) por local**")
-    df_res = fornecedores_basicos_por_local(df, df_forn, locais=("RJ","SP","Itajaí"))
+    df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
     if isinstance(df_res, pd.DataFrame) and not df_res.empty:
         # KPIs
         k1, k2, k3 = st.columns(3)
@@ -398,4 +399,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
