@@ -341,3 +341,65 @@ def maior_compra_item_unico(df):
         out["QUANTIDADE"] = pd.to_numeric(out["QUANTIDADE"], errors="coerce")
 
     return out
+
+def categorias_mais_compradas_ultimos_anos(df, anos=5, col_cat="INSUMO_CATEGORIA"):
+    """
+    Top de categorias por valor total nos últimos `anos`.
+    Retorna: CATEGORIA | VALOR_TOTAL | PART_%
+    """
+    import pandas as pd
+    df = df.copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+    base = df[df["OF_DATA_DT"] >= pd.Timestamp.today() - pd.DateOffset(years=anos)].copy()
+    if base.empty or col_cat not in base.columns:
+        return pd.DataFrame(columns=["CATEGORIA", "VALOR_TOTAL", "PART_%"])
+
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    grp = (base.groupby(col_cat)["PRCTTL_INSUMO"].sum()
+           .reset_index(name="VALOR_TOTAL")
+           .rename(columns={col_cat: "CATEGORIA"}))
+    tot = float(grp["VALOR_TOTAL"].sum()) if not grp.empty else 0.0
+    grp["PART_%"] = (grp["VALOR_TOTAL"] / tot * 100).round(2) if tot else 0.0
+    grp["VALOR_TOTAL"] = grp["VALOR_TOTAL"].round(2)
+    return grp.sort_values("VALOR_TOTAL", ascending=False)
+
+
+def categorias_crescimento_yoy(df, anos=5, col_cat="INSUMO_CATEGORIA"):
+    """
+    Crescimento médio YoY por categoria nos últimos `anos`.
+    Retorna: CATEGORIA | MEDIA_YOY_PCT | ULTIMO_YOY_PCT | PRIMEIRO_ANO | ULTIMO_ANO
+    """
+    import pandas as pd
+    df = df.copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+    base = df[df["OF_DATA_DT"] >= pd.Timestamp.today() - pd.DateOffset(years=anos)].copy()
+    if base.empty or col_cat not in base.columns:
+        return pd.DataFrame(columns=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"])
+
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    base["ANO"] = base["OF_DATA_DT"].dt.year
+    agg = (base.groupby([col_cat, "ANO"])["PRCTTL_INSUMO"].sum()
+           .reset_index()
+           .sort_values([col_cat, "ANO"]))
+
+    # YoY por categoria
+    agg["YOY_PCT"] = agg.groupby(col_cat)["PRCTTL_INSUMO"].pct_change() * 100
+
+    def _avg(s): 
+        s = s.dropna()
+        return float(s.mean()) if not s.empty else 0.0
+
+    def _last(s):
+        s = s.dropna()
+        return float(s.iloc[-1]) if not s.empty else 0.0
+
+    res = (agg.groupby(col_cat)
+           .agg(MEDIA_YOY_PCT=("YOY_PCT", _avg),
+                ULTIMO_YOY_PCT=("YOY_PCT", _last),
+                PRIMEIRO_ANO=("ANO", "min"),
+                ULTIMO_ANO=("ANO", "max"))
+           .reset_index()
+           .rename(columns={col_cat: "CATEGORIA"}))
+    res["MEDIA_YOY_PCT"] = res["MEDIA_YOY_PCT"].round(2)
+    res["ULTIMO_YOY_PCT"] = res["ULTIMO_YOY_PCT"].round(2)
+    return res.sort_values("MEDIA_YOY_PCT", ascending=False)
