@@ -455,7 +455,7 @@ def _set_categorias_basicos(df_erp: pd.DataFrame, col_cat: str = "INSUMO_CATEGOR
 def fornecedores_basicos_por_local_cadastro(
     df_forn: pd.DataFrame,
     df_erp: pd.DataFrame,
-    locais: Tuple[str, ...] = ("RJ","SP","Itajaí"),
+    locais: Tuple[str, ...] = ("RJ","SP","SC"),
     candidatos_col_cat_forn: Tuple[str, ...] = (
         "CATEGORIAS", "CATEGORIA", "SEGMENTOS", "LINHA", "LINHAS",
         "LINHA_PRODUTO", "AREAS", "ATIVIDADES", "MATERIAIS", "GRUPOS",
@@ -471,7 +471,7 @@ def fornecedores_basicos_por_local_cadastro(
     if not col_id:
         raise KeyError("Cadastro: não encontrei coluna de ID do fornecedor.")
     col_uf = _pick_col(df, ["FORNECEDOR_UF","FORN_UF","UF"])
-    col_cidade = _pick_col(df, ["FORNECEDOR_MUN","FORNECEDOR_CIDADE","MUNICIPIO","CIDADE"])
+    col_cidade = _pick_col(df, ["FORNECEDOR_MUN","FORNECEDOR_CIDADE","MUNICIPIO","CIDADE", "FORN_UF"])
 
     col_cat_forn = None
     for c in candidatos_col_cat_forn:
@@ -511,3 +511,4 @@ def fornecedores_basicos_por_local_cadastro(
 
     out = pd.DataFrame([{"LOCAL": loc, "FORNECEDORES_BÁSICO_CAD": _count(loc)} for loc in locais])
     return out.sort_values("LOCAL").reset_index(drop=True)
+
