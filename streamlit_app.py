@@ -117,7 +117,7 @@ with st.container(border=True):
     vm = _safe(valor_medio_por_of, df)
     if vm:
         media, _det = vm
-        k1.metric("Valor médio por OF", _format_brl(media))
+        k1.metric("Valor médio por OF", _format_brl(round(media, 2)))
 
     # % OFs básicas (último ano)
     pct_grp = _safe(percentual_ofs_basicas_ultimo_ano, df)
@@ -153,27 +153,36 @@ with st.container(border=True):
     with c1:
         st.caption("Últimos 10 anos")
         df_top10 = _safe(fornecedor_top_por_uf, df, anos=10)
-        st.dataframe(
-            df_top10, use_container_width=True,
-            column_config={
-                "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
-                "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),})
         if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
-            st.data_editor(_fmt_brl_col(df_top10, ["VALOR"]),
-                           hide_index=True, use_container_width=True)
+            # garante texto no código (ver item 2 para preservar zeros desde a origem)
+            if "FORNECEDOR_CDG" in df_top10.columns:
+                df_top10["FORNECEDOR_CDG"] = df_top10["FORNECEDOR_CDG"].astype("string")
+            st.dataframe(
+                df_top10,
+                use_container_width=True,
+                column_config={
+                    "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                    "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
+                },
+                hide_index=True,
+            )
         else:
             st.info("Sem dados para exibir.")
     with c2:
         st.caption("Últimos 2 anos")
         df_top2 = _safe(fornecedor_top_por_uf, df, anos=2)
-        st.dataframe(
-            df_top2, use_container_width=True,
-            column_config={
-                "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
-                "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),})
         if isinstance(df_top2, pd.DataFrame) and not df_top2.empty:
-            st.data_editor(_fmt_brl_col(df_top2, ["VALOR"]),
-                           hide_index=True, use_container_width=True)
+            if "FORNECEDOR_CDG" in df_top2.columns:
+                df_top2["FORNECEDOR_CDG"] = df_top2["FORNECEDOR_CDG"].astype("string")
+            st.dataframe(
+                df_top2,
+                use_container_width=True,
+                column_config={
+                    "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                    "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
+                },
+                hide_index=True,
+            )
         else:
             st.info("Sem dados para exibir.")
 
@@ -186,8 +195,17 @@ with st.container(border=True):
         st.markdown("**🏆 Maior OF**")
         df_max = _safe(maior_ordem_fornecimento, df)
         if isinstance(df_max, pd.DataFrame) and not df_max.empty:
-            cols_money = [c for c in ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"] if c in df_max.columns]
-            st.data_editor(_fmt_brl_col(df_max, cols_money), hide_index=True, use_container_width=True)
+            st.dataframe(
+                df_max,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
+                    "PRCTTL_INSUMO": st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
+                    "TOTAL": st.column_config.NumberColumn("TOTAL", format="%.2f"),
+                },
+            )
         else:
             st.info("Sem dados para exibir.")
 
@@ -195,8 +213,17 @@ with st.container(border=True):
         st.markdown("**🧩 Menor OF**")
         df_min = _safe(menor_ordem_fornecimento, df)
         if isinstance(df_min, pd.DataFrame) and not df_min.empty:
-            cols_money = [c for c in ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"] if c in df_min.columns]
-            st.data_editor(_fmt_brl_col(df_min, cols_money), hide_index=True, use_container_width=True)
+            st.dataframe(
+                df_min,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                    "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
+                    "PRCTTL_INSUMO": st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
+                    "TOTAL": st.column_config.NumberColumn("TOTAL", format="%.2f"),
+                },
+            )
         else:
             st.info("Sem dados para exibir.")
 
@@ -207,17 +234,32 @@ with st.container(border=True):
     st.markdown("**Bimestre com maior volume (padrão: últimos 10 anos)**")
     df_bi = _safe(periodo_maior_volume_bimestre, df, anos=10)
     if isinstance(df_bi, pd.DataFrame) and not df_bi.empty:
-        st.data_editor(_fmt_brl_col(df_bi, ["VALOR_TOTAL"]), hide_index=True, use_container_width=True)
+        st.dataframe(
+            df_bi,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+                "QTDE_OFS": st.column_config.NumberColumn("QTDE_OFS", format="%.0f"),
+            },
+        )
     else:
         st.info("Sem dados para exibir.")
 
     st.markdown("**Mês com maior volume (último ano)**")
     df_mes = _safe(mes_maior_volume_ultimo_ano, df)
     if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
-        st.data_editor(_fmt_brl_col(df_mes, ["VALOR_TOTAL"]), hide_index=True, use_container_width=True)
+        st.dataframe(
+            df_mes,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
+            },
+        )
     else:
         st.info("Sem dados para exibir.")
-
+        
 # ---------- Bloco: Série de Fornecedores Ativos ----------
 with st.container(border=True):
     st.subheader("👥 Fornecedores ativos (série anual)")
@@ -239,4 +281,5 @@ st.markdown("""
 section.main > div { padding-top: 0.25rem; }
 </style>
 """, unsafe_allow_html=True)
+
 
