@@ -13,21 +13,53 @@ def carregar_fornecedores(path: Path | None = None, sheet: int | str = 0) -> pd.
     return df
 
 # util interno: detectar coluna
-def _col(df: pd.DataFrame, candidatos: list[str]) -> str:
-    for c in candidatos:
-        if c in df.columns:
-            return c
-    raise KeyError(f"Não encontrei nenhuma das colunas: {candidatos}")
+def _col(df: pd.DataFrame, candidatos):
+    """Retorna a 1ª coluna encontrada entre candidatos/aliases (case-insensitive, com trim)."""
+    aliases = {
+        "FORNECEDOR_CDG": ["FORNECEDOR_ID", "COD_FORNECEDOR", "FORN_ID", "FORN_CODIGO", "FORN_CDG",
+                           "FORN_CNPJ", "CNPJ", "PED_FORNECEDOR", "FORNECEDOR"],
+        "FORNECEDOR_UF":  ["FORN_UF", "UF"],
+        "DATA_OF":        ["OF_DATA", "PED_DT", "REQ_DATA", "DATA", "DT"],
+    }
 
-# ---------- Métricas ----------
-def total_empresas_cadastradas(df_forn: pd.DataFrame,
-                               col_id: str | None = None) -> int:
-    """
-    Total de empresas cadastradas (distinct fornecedor).
-    Tenta detectar a coluna de ID automaticamente.
-    """
-    col = col_id or _col(df_forn, ["FORNECEDOR_CDG", "FORNECEDOR_ID", "COD_FORNECEDOR", "CNPJ"])
-    return int(df_forn[col].nunique())
+    # Expande candidatos com aliases
+    lista = []
+    for c in candidatos:
+        lista.append(c)
+        lista.extend(aliases.get(c, []))
+
+    # Match exato e case-insensitive/trim
+    cols = list(df.columns)
+    upmap = {c.strip().upper(): c for c in cols}
+    for cand in lista:
+        key = cand.strip().upper()
+        if key in upmap:
+            return upmap[key]
+        # fallback por substring (ex.: pega qualquer coluna que contenha 'CNPJ')
+        for k, original in upmap.items():
+            if key in k:
+                return original
+
+    raise KeyError(f"Não encontrei nenhuma das colunas: {candidatos}. Disponíveis: {cols}")
+
+
+def total_empresas_cadastradas(df_forn: pd.DataFrame, col_id: str | None = None) -> int:
+    """Conta fornecedores únicos de maneira robusta."""
+    # tenta identificar coluna de ID
+    try:
+        col = col_id or _col(df_forn, ["FORNECEDOR_CDG"])
+    except KeyError:
+        # fallback direto para CNPJ/variantes
+        col = _col(df_forn, ["FORN_CNPJ", "CNPJ"])
+
+    s = (
+        df_forn[col]
+        .astype("string")
+        .str.strip()
+        .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
+        .dropna()
+    )
+    return int(s.nunique())
 
 def serie_fornecedores_ativos_ultimos_anos(df_erp: pd.DataFrame,
                                            anos: int = 10,
