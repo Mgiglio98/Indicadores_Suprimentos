@@ -199,7 +199,7 @@ with st.container(border=True):
             st.info("Sem dados para exibir.")
 
 # ---------- Volumes por período ----------
-with st.container(border=True):
+ith st.container(border=True):
     st.subheader("📈 Volumes por período")
 
     c1, c2 = st.columns(2)
@@ -211,46 +211,30 @@ with st.container(border=True):
         if isinstance(df_mes_12, pd.DataFrame) and not df_mes_12.empty:
             df_mes_12 = _round_cols(df_mes_12, ["VALOR_TOTAL", "PART_%"])
             st.dataframe(
-                df_mes_12, use_container_width=True, hide_index=True,
+                df_mes_12,
+                use_container_width=True,
+                hide_index=True,
                 column_config={
                     "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "PART_%":      st.column_config.NumberColumn("PART_%", format="%.2f"),
+                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
                 },
             )
         else:
             st.info("Sem dados para exibir.")
 
-    # Top 3 meses (geral)
+    # Top 3 meses (geral, agregando todos os anos por mês-do-ano)
     with c2:
-    st.markdown("**Top 3 meses (geral)**")
-    df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3)
-    if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
-        df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
-        st.dataframe(
-            df_mes_all,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "MES_ROTULO": st.column_config.TextColumn("MÊS"),
-                "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
-            },
-        )
-    else:
-        st.info("Sem dados para exibir.")
-
-    # Estacionalidade por bimestre (share % em ordem de calendário)
-    with st.expander("Estacionalidade por bimestre (participação % nos últimos 10 anos)"):
-        df_bi_season = _safe(periodo_maior_volume_bimestre, df, anos=10, estacionalidade=True)
-        if isinstance(df_bi_season, pd.DataFrame) and not df_bi_season.empty:
-            df_bi_season = _round_cols(df_bi_season, ["VALOR_TOTAL", "PART_%"])
+        st.markdown("**Top 3 meses (geral)**")
+        df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3)
+        if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
+            df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
             st.dataframe(
-                df_bi_season,
+                df_mes_all,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
+                    "MES_ROTULO":  st.column_config.TextColumn("MÊS"),
                     "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "QTDE_OFS":    st.column_config.NumberColumn("QTDE_OFS",    format="%.0f"),
                     "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
                 },
             )
@@ -284,5 +268,6 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
