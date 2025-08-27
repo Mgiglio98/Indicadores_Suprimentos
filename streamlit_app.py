@@ -11,6 +11,7 @@ from Tratamento_Indicadores import (
     periodo_maior_volume_bimestre,
     mes_maior_volume_ultimo_ano,
     _format_brl,
+    quantidade_empresas_que_venderam_ultimos_3_anos,
 )
 
 from fornecedores_core import (
@@ -70,7 +71,7 @@ df = df_erp.copy()
 # ---------- KPIs ----------
 with st.container(border=True):
     st.subheader("📊 Resumo")
-    k1, k2, k3, k4 = st.columns(4)
+    k1, k2, k3, k4, k5 = st.columns(5)
 
     vm = _safe(valor_medio_por_of, df)
     if vm:
@@ -89,11 +90,14 @@ with st.container(border=True):
         k3.metric("Fornecedores cadastrados", "—")
         st.caption(f"Diagnóstico: {e}")
 
+    qtd_vend = _safe(quantidade_empresas_que_venderam_ultimos_3_anos, df)
+    k4.metric("Empresas que venderam (últimos 3 anos)", _format_int_br(qtd_vend if isinstance(qtd_vend, (int, float)) else 0))
+    
     try:
         serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
         if serie is not None and not serie.empty:
             var_txt = f"{resumo['var_abs']} ({resumo['var_pct']:.2f}%)"
-            k4.metric(
+            k5.metric(
                 "Variação fornecedores ativos",
                 var_txt,
                 help=f"{resumo['primeiro_ano']} → {resumo['ultimo_ano']}",
@@ -254,5 +258,6 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
