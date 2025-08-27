@@ -47,7 +47,6 @@ def fornecedor_top_por_uf(df, anos=10, ufs=("RJ","SP")):
     if not out.empty:
         out["FORNECEDOR_CDG"] = out["FORNECEDOR_CDG"].astype("string")
     return out
-    return pd.DataFrame(out)
 
 def maior_ordem_fornecimento(df):
     df = df.copy()
@@ -142,4 +141,5 @@ def quantidade_empresas_que_venderam_ultimos_3_anos(df):
         .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
         .dropna())
     return int(s.nunique())
+
 
