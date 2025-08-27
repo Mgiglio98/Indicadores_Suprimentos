@@ -78,7 +78,7 @@ df_forn = _load_df_forn()
 df = df_erp.copy()
 
 # ---------- KPIs ----------
-with st.container(border=True):
+w st.container(border=True):
     st.subheader("📊 Resumo")
     k1, k2, k3, k4, k5 = st.columns(5)
 
@@ -199,7 +199,7 @@ with st.container(border=True):
             st.info("Sem dados para exibir.")
 
 # ---------- Volumes por período ----------
-ith st.container(border=True):
+with st.container(border=True):
     st.subheader("📈 Volumes por período")
 
     c1, c2 = st.columns(2)
@@ -268,6 +268,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
