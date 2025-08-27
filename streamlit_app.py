@@ -18,7 +18,6 @@ from Tratamento_Indicadores import (
     categorias_mais_compradas_ultimos_anos,
     categorias_crescimento_yoy,
     categorias_basicos_distintos,
-    fornecedores_basicos_por_local,
     fornecedores_basicos_por_local_cadastro,
 )
 
@@ -399,3 +398,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
