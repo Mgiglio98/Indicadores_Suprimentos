@@ -17,6 +17,8 @@ from Tratamento_Indicadores import (
     maior_compra_item_unico,
     categorias_mais_compradas_ultimos_anos,
     categorias_crescimento_yoy,
+    categorias_basicos_distintos,
+    fornecedores_basicos_por_local,
 )
 
 from fornecedores_core import (
@@ -342,6 +344,50 @@ with st.container(border=True):
         else:
             st.info("Sem dados para exibir.")
 
+with st.container(border=True):
+    st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
+
+    # 1) Categorias dos básicos
+    st.markdown("**Categorias dos materiais básicos (observadas no ERP):**")
+    df_cats = categorias_basicos_distintos(df)
+    if isinstance(df_cats, pd.DataFrame) and not df_cats.empty:
+        st.dataframe(df_cats, use_container_width=True, hide_index=True)
+    else:
+        st.info("Não encontrei categorias para TIPO_MATERIAL = 'BÁSICO'.")
+
+    # 2) & 3) Contagem de fornecedores CADASTRADOS capazes de vender básico por local
+    st.markdown("**Fornecedores cadastrados aptos (básico) por local**")
+    df_res = fornecedores_basicos_por_local(df, df_forn, locais=("RJ","SP","Itajaí"))
+    if isinstance(df_res, pd.DataFrame) and not df_res.empty:
+        # KPIs
+        k1, k2, k3 = st.columns(3)
+        try:
+            rj = int(df_res.loc[df_res["LOCAL"].str.upper()=="RJ", "FORNECEDORES_BÁSICO_CAD"].iloc[0])
+        except Exception:
+            rj = 0
+        try:
+            sp = int(df_res.loc[df_res["LOCAL"].str.upper()=="SP", "FORNECEDORES_BÁSICO_CAD"].iloc[0])
+        except Exception:
+            sp = 0
+        try:
+            ita = int(df_res.loc[df_res["LOCAL"].str.lower().str.contains("itaj"), "FORNECEDORES_BÁSICO_CAD"].iloc[0])
+        except Exception:
+            ita = 0
+
+        def _fmt(n): 
+            try: return f"{int(n):,}".replace(",", ".")
+            except: return "0"
+
+        k1.metric("RJ — fornecedores básicos (cad.)", _fmt(rj))
+        k2.metric("SP — fornecedores básicos (cad.)", _fmt(sp))
+        k3.metric("Itajaí — fornecedores básicos (cad.)", _fmt(ita))
+
+        with st.expander("Ver detalhes"):
+            st.dataframe(df_res, use_container_width=True, hide_index=True,
+                         column_config={"FORNECEDORES_BÁSICO_CAD": st.column_config.NumberColumn(format="%.0f")})
+    else:
+        st.info("Sem dados para compor os contadores por local.")
+
 # ---------- Estilo ----------
 st.markdown(
     """
@@ -352,3 +398,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
