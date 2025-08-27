@@ -65,6 +65,13 @@ def _format_int_br(n) -> str:
     except Exception:
         return "0"
 
+def _fill_last_n_years(df: pd.DataFrame, year_col: str = "ANO", y_col: str = "FORNECEDORES_ATIVOS", n: int = 10) -> pd.DataFrame:
+    anos = list(range(pd.Timestamp.today().year - n + 1, pd.Timestamp.today().year + 1))
+    base = pd.DataFrame({year_col: anos})
+    out = base.merge(df[[year_col, y_col]], on=year_col, how="left")
+    out[y_col] = pd.to_numeric(out[y_col], errors="coerce").fillna(0).astype(int)
+    return out
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def _load_df_erp():
     return carregar_bases()
@@ -258,6 +265,28 @@ with st.container(border=True):
     except Exception as e:
         st.warning(f"Não consegui gerar a série: {e}")
 
+with st.container(border=True):
+    st.subheader("📊 Fornecedores ativos por ano (últimos 10 anos)")
+
+    serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
+    if isinstance(serie, pd.DataFrame) and not serie.empty:
+        # garante anos contínuos (0 quando não teve fornecedor ativo)
+        serie_plot = _fill_last_n_years(serie, year_col="ANO", y_col="FORNECEDORES_ATIVOS", n=10)
+
+        st.bar_chart(
+            data=serie_plot,
+            x="ANO",
+            y="FORNECEDORES_ATIVOS",
+            use_container_width=True,
+        )
+
+        st.caption(
+            f"Variação {resumo['primeiro_ano']} → {resumo['ultimo_ano']}: "
+            f"{resumo['var_abs']} fornecedores ({resumo['var_pct']:.2f}%)."
+        )
+    else:
+        st.info("Sem dados para exibir nos últimos 10 anos.")
+
 # ---------- Estilo ----------
 st.markdown(
     """
@@ -268,6 +297,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
