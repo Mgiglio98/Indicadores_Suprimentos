@@ -64,6 +64,13 @@ def _load_df_forn(): return carregar_fornecedores()
 df_erp  = _load_df_erp()
 df_forn = _load_df_forn()
 
+def _round_cols(df: pd.DataFrame, cols: list[str]) -> pd.DataFrame:
+    df = df.copy()
+    for c in cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").round(2)
+    return df
+
 # ---------- Filtros no topo ----------
 with st.container(border=True):
     st.subheader("🔎 Filtros")
@@ -152,39 +159,28 @@ with st.container(border=True):
     c1, c2 = st.columns(2)
     with c1:
         st.caption("Últimos 10 anos")
-        df_top10 = _safe(fornecedor_top_por_uf, df, anos=10)
-        if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
-            # garante texto no código (ver item 2 para preservar zeros desde a origem)
-            if "FORNECEDOR_CDG" in df_top10.columns:
-                df_top10["FORNECEDOR_CDG"] = df_top10["FORNECEDOR_CDG"].astype("string")
-            st.dataframe(
-                df_top10,
-                use_container_width=True,
-                column_config={
-                    "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
-                    "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
-                },
-                hide_index=True,
-            )
-        else:
-            st.info("Sem dados para exibir.")
+        df_top10 = _round_cols(df_top10, ["VALOR"])
+        st.dataframe(
+            df_top10,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
+            },
+        )
     with c2:
         st.caption("Últimos 2 anos")
-        df_top2 = _safe(fornecedor_top_por_uf, df, anos=2)
-        if isinstance(df_top2, pd.DataFrame) and not df_top2.empty:
-            if "FORNECEDOR_CDG" in df_top2.columns:
-                df_top2["FORNECEDOR_CDG"] = df_top2["FORNECEDOR_CDG"].astype("string")
-            st.dataframe(
-                df_top2,
-                use_container_width=True,
-                column_config={
-                    "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
-                    "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
-                },
-                hide_index=True,
-            )
-        else:
-            st.info("Sem dados para exibir.")
+        df_top2 = _round_cols(df_top2, ["VALOR"])
+        st.dataframe(
+            df_top2,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
+            },
+        )
 
 # ---------- Bloco: Maior/Menor OF (cards + detalhes sob demanda) ----------
 with st.container(border=True):
@@ -193,7 +189,7 @@ with st.container(border=True):
 
     with c1:
         st.markdown("**🏆 Maior OF**")
-        df_max = _safe(maior_ordem_fornecimento, df)
+        df_max = _round_cols(df_max, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
         if isinstance(df_max, pd.DataFrame) and not df_max.empty:
             st.dataframe(
                 df_max,
@@ -211,7 +207,7 @@ with st.container(border=True):
 
     with c2:
         st.markdown("**🧩 Menor OF**")
-        df_min = _safe(menor_ordem_fornecimento, df)
+       df_min = _round_cols(df_min, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
         if isinstance(df_min, pd.DataFrame) and not df_min.empty:
             st.dataframe(
                 df_min,
@@ -232,7 +228,7 @@ with st.container(border=True):
     st.subheader("📈 Volumes por período")
 
     st.markdown("**Bimestre com maior volume (padrão: últimos 10 anos)**")
-    df_bi = _safe(periodo_maior_volume_bimestre, df, anos=10)
+    df_bi  = _round_cols(df_bi,  ["VALOR_TOTAL"])
     if isinstance(df_bi, pd.DataFrame) and not df_bi.empty:
         st.dataframe(
             df_bi,
@@ -247,7 +243,7 @@ with st.container(border=True):
         st.info("Sem dados para exibir.")
 
     st.markdown("**Mês com maior volume (último ano)**")
-    df_mes = _safe(mes_maior_volume_ultimo_ano, df)
+    df_mes = _round_cols(df_mes, ["VALOR_TOTAL"])
     if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
         st.dataframe(
             df_mes,
@@ -264,7 +260,10 @@ with st.container(border=True):
     try:
         serie, _resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
         if isinstance(serie, pd.DataFrame) and not serie.empty:
-            st.dataframe(serie, hide_index=True, use_container_width=True, column_config={"FORNECEDORES_ATIVOS": st.column_config.NumberColumn("FORNECEDORES_ATIVOS", format="%.0f")})
+            st.dataframe(
+                serie, hide_index=True, use_container_width=True,
+                column_config={"FORNECEDORES_ATIVOS": st.column_config.NumberColumn("FORNECEDORES_ATIVOS", format="%.0f")}
+            )
             st.bar_chart(data=serie, x="ANO", y="FORNECEDORES_ATIVOS", use_container_width=True)
         else:
             st.info("Sem dados para exibir.")
@@ -279,6 +278,7 @@ st.markdown("""
 section.main > div { padding-top: 0.25rem; }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
