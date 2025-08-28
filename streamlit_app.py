@@ -618,7 +618,7 @@ with st.container(border=True):
         if top_cagr is not None:
             st.caption(
                 "Maior taxa de crescimento desde o início (CAGR): "
-                f"**{top_cagr['CATEGORIA']}** — {top_cagr['CAGR_%']:.2f}% a.a. "
+                f"**{top_cagr['CATEGORIAS']}** — {top_cagr['CAGR_%']:.2f}% a.a. "
                 f"({int(top_cagr['ANO_INICIO'])}→{int(top_cagr['ANO_FIM'])})."
             )
     except Exception as e:
@@ -668,6 +668,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
