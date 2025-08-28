@@ -1,5 +1,12 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
+from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+    _TZ = ZoneInfo("America/Sao_Paulo")  # fuso BR
+except Exception:
+    _TZ = None
 
 from Tratamento_Indicadores import (
     carregar_bases,
@@ -130,6 +137,48 @@ def _fill_last_n_years(df: pd.DataFrame, year_col: str = "ANO", y_col: str = "FO
     out[y_col] = pd.to_numeric(out[y_col], errors="coerce").fillna(0).astype(int)
     return out
 
+def _fmt_dt_br(ts: float) -> str:
+    try:
+        dt = datetime.fromtimestamp(ts, tz=_TZ) if _TZ else datetime.fromtimestamp(ts)
+        return dt.strftime("%d/%m/%Y %H:%M")
+    except Exception:
+        return "—"
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _repo_files_info():
+    base_dir = Path(__file__).parent
+    files = [
+        {"name": "total_indicadores.xlsx",  "path": base_dir / "total_indicadores.xlsx"},
+        {"name": "FornecedoresAtivos.xlsx", "path": base_dir / "FornecedoresAtivos.xlsx"},
+    ]
+    out, mx = [], 0.0
+    for f in files:
+        p = f["path"]
+        if p.exists():
+            ts = p.stat().st_mtime
+            mx = max(mx, ts)
+            out.append({
+                "name": f["name"],
+                "path": str(p),
+                "mtime": ts,
+                "mtime_str": _fmt_dt_br(ts),
+                "size": p.stat().st_size,
+                "found": True,
+            })
+        else:
+            out.append({
+                "name": f["name"], "path": str(p), "mtime": None,
+                "mtime_str": "—", "size": 0, "found": False
+            })
+    return {"files": out, "max_ts": mx, "max_str": _fmt_dt_br(mx) if mx else "—"}
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _read_file_bytes(path: str):
+    try:
+        return Path(path).read_bytes()
+    except Exception:
+        return None
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def _load_df_erp():
     return carregar_bases()
@@ -141,6 +190,41 @@ def _load_df_forn():
 df_erp = _load_df_erp()
 df_forn = _load_df_forn()
 df = df_erp.copy()
+
+# ——— Carimbo de atualização (arquivos do repositório) ———
+info = _repo_files_info()
+nomes = " e ".join([f["name"] for f in info["files"] if f["found"]]) or "—"
+with st.container(border=True):
+    st.caption("🗓️ Atualização das bases (repositório)")
+    st.markdown(f"**Atualizado em:** {info['max_str']}  \n**Origem:** {nomes}")
+
+# ——— Downloads das bases (Excel) ———
+with st.container(border=True):
+    st.subheader("⬇️ Downloads das bases (Excel)")
+    f1, f2 = info["files"][0], info["files"][1]
+    c1, c2 = st.columns(2)
+
+    with c1:
+        data1 = _read_file_bytes(f1["path"]) if f1["found"] else None
+        st.download_button(
+            "Baixar total_indicadores.xlsx",
+            data=data1 if data1 is not None else b"",
+            file_name="total_indicadores.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            disabled=(data1 is None),
+            help=f"Atualizado em {f1['mtime_str']}" if f1["found"] else "Arquivo não encontrado"
+        )
+
+    with c2:
+        data2 = _read_file_bytes(f2["path"]) if f2["found"] else None
+        st.download_button(
+            "Baixar FornecedoresAtivos.xlsx",
+            data=data2 if data2 is not None else b"",
+            file_name="FornecedoresAtivos.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            disabled=(data2 is None),
+            help=f"Atualizado em {f2['mtime_str']}" if f2["found"] else "Arquivo não encontrado"
+        )
 
 # ---------- KPIs ----------
 with st.container(border=True):
@@ -558,4 +642,5 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
