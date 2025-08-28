@@ -681,3 +681,39 @@ def itens_da_of(df, of_cdg, top_n: int | None = 5):
 
     return out.reset_index(drop=True)
 
+def categorias_yoy_series(df, anos=5, col_cat="INSUMO_CATEGORIA"):
+    """
+    Retorna a série YoY por CATEGORIA e ANO nos últimos `anos`.
+    Colunas: CATEGORIA | ANO | YOY_PCT
+    Obs.: inclui ano anterior no filtro para conseguir calcular o YoY do 1º ano do período.
+    """
+    import pandas as pd
+    import numpy as np
+
+    base = df.copy()
+    if col_cat not in base.columns:
+        return pd.DataFrame(columns=["CATEGORIA","ANO","YOY_PCT"])
+
+    base["OF_DATA_DT"] = pd.to_datetime(base["OF_DATA"], errors="coerce")
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    base = base.dropna(subset=["OF_DATA_DT", "PRCTTL_INSUMO"])
+
+    ano_atual = pd.Timestamp.today().year
+    # pega anos +1 para ter referência do pct_change
+    limite = ano_atual - anos
+    base["ANO"] = base["OF_DATA_DT"].dt.year
+    base = base[base["ANO"] >= limite - 1]  # ano anterior ao recorte
+
+    agg = (base.groupby([col_cat, "ANO"])["PRCTTL_INSUMO"]
+               .sum()
+               .reset_index()
+               .sort_values([col_cat, "ANO"]))
+
+    agg["YOY_PCT"] = agg.groupby(col_cat)["PRCTTL_INSUMO"].pct_change() * 100
+
+    out = (agg[agg["ANO"] >= limite]  # mantém somente os anos do recorte pro gráfico
+             .rename(columns={col_cat: "CATEGORIA"})
+             [["CATEGORIA","ANO","YOY_PCT"]]
+             .copy())
+    out["YOY_PCT"] = pd.to_numeric(out["YOY_PCT"], errors="coerce").round(2)
+    return out.reset_index(drop=True)
