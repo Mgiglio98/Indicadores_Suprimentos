@@ -31,6 +31,8 @@ from Tratamento_Indicadores import (
     valor_medio_por_item,
     itens_da_of,
     categorias_yoy_series,
+    categorias_cagr_desde_inicio,
+    categoria_top_cagr,
 )
 
 from fornecedores_core import (
@@ -610,42 +612,17 @@ with st.container(border=True):
     else:
         st.info("Sem dados para exibir.")
 
-    # --- Frase: categoria que mais apresenta crescimento nos últimos anos ---
-    # preferimos a série robusta; se não existir, caímos no resumo médio YoY
-    cat_text = None
+    # Maior taxa de crescimento (CAGR desde o início dos registros)
     try:
-        s = categorias_yoy_series(df, anos=5, min_prev=10_000, clip=(-200, 200))
-        if isinstance(s, pd.DataFrame) and not s.empty:
-            # exclui "DESPESAS OPERACIONAIS", se existir
-            if "CATEGORIA" in s.columns:
-                s = s[s["CATEGORIA"].astype("string").str.strip().str.upper() != "DESPESAS OPERACIONAIS"]
-            s = s.dropna(subset=["YOY_PCT"])
-            if not s.empty:
-                # ranking por mediana do YoY (mais robusto)
-                rank_med = s.groupby("CATEGORIA")["YOY_PCT"].median().sort_values(ascending=False)
-                cat_top = rank_med.index[0]
-                med_yoy = float(rank_med.iloc[0])
-                cat_text = f"Categoria com maior crescimento (mediana YoY, últimos 5 anos): **{cat_top}** — {med_yoy:.2f}%."
-    except Exception:
-        pass
-
-    if cat_text is None:
-        # fallback pelo resumo da média YoY
-        df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
-        if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
-            tmp = df_yoy.copy()
-            tmp = tmp[tmp["CATEGORIA"].astype("string").str.strip().str.upper() != "DESPESAS OPERACIONAIS"]
-            tmp["MEDIA_YOY_PCT"] = pd.to_numeric(tmp["MEDIA_YOY_PCT"], errors="coerce")
-            tmp = tmp.dropna(subset=["MEDIA_YOY_PCT"])
-            if not tmp.empty:
-                topg = tmp.sort_values("MEDIA_YOY_PCT", ascending=False).iloc[0]
-                cat_text = (
-                    f"Categoria com maior crescimento (média YoY, últimos 5 anos): "
-                    f"**{topg['CATEGORIA']}** — {float(topg['MEDIA_YOY_PCT']):.2f}%."
-                )
-
-    if cat_text:
-        st.caption(cat_text)
+        top_cagr = categoria_top_cagr(df, min_prev=10_000)
+        if top_cagr is not None:
+            st.caption(
+                "Maior taxa de crescimento desde o início (CAGR): "
+                f"**{top_cagr['CATEGORIA']}** — {top_cagr['CAGR_%']:.2f}% a.a. "
+                f"({int(top_cagr['ANO_INICIO'])}→{int(top_cagr['ANO_FIM'])})."
+            )
+    except Exception as e:
+        st.caption(f"Não foi possível calcular a taxa composta de crescimento: {e}")
             
 with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
@@ -691,6 +668,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
