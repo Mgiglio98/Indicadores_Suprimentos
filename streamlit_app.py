@@ -579,21 +579,36 @@ with st.container(border=True):
         st.markdown("**Mais compradas (últimos 5 anos)**")
         df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
         if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
-            toplot = df_cat5.head(8).copy()
-            _altura = max(220, 28 * len(toplot))
+            # ordena do maior para o menor e limita a 8 categorias
+            df_cat5 = df_cat5.copy()
+            df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
+            toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
+    
+            # altura adaptativa para caber rótulos longos
+            _altura = max(240, 28 * len(toplot))
+    
+            # barras horizontais (categoria no eixo Y, valor no X) + ordem desc
             chart_cat = (
                 alt.Chart(toplot)
                 .mark_bar()
                 .encode(
-                    x=alt.Y("CATEGORIA:N", title="CATEGORIA", sort="-x"),
-                    y=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
-                    tooltip=["CATEGORIA", "VALOR_TOTAL"]
+                    y=alt.Y(
+                        "CATEGORIA:N",
+                        title="CATEGORIA",
+                        sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
+                    ),
+                    x=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
+                    tooltip=["CATEGORIA", "VALOR_TOTAL"],
                 )
                 .properties(height=_altura)
             )
             st.altair_chart(chart_cat, use_container_width=True)
-            top = df_cat5.iloc[0]
-            st.caption(f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({top['PART_%']:.2f}%)")
+    
+            # caption do Top considerando o dataframe já ordenado
+            top = toplot.iloc[0]
+            st.caption(
+                f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({_format_pct_br(top['PART_%'])})"
+            )
         else:
             st.info("Sem dados para exibir.")
 
@@ -602,27 +617,43 @@ with st.container(border=True):
         st.markdown("**Maior crescimento YoY (média, últimos 5 anos)**")
         df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
         if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
-            toplot = df_yoy.head(8).copy()
-            _altura = max(220, 28 * len(toplot))
+            df_yoy = df_yoy.copy()
+            # garante numérico
+            for c in ["MEDIA_YOY_PCT", "ULTIMO_YOY_PCT"]:
+                if c in df_yoy.columns:
+                    df_yoy[c] = pd.to_numeric(df_yoy[c], errors="coerce")
+    
+            # ordena desc e limita a 8
+            toplot = df_yoy.sort_values("MEDIA_YOY_PCT", ascending=False).head(8)
+    
+            # barras horizontais + altura adaptativa
+            _altura = max(240, 28 * len(toplot))
             chart_yoy = (
                 alt.Chart(toplot)
                 .mark_bar()
                 .encode(
-                    x=alt.Y("CATEGORIA:N", title="CATEGORIA", sort="-x"),
-                    y=alt.X("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
-                    tooltip=["CATEGORIA", "MEDIA_YOY_PCT"]
+                    y=alt.Y(
+                        "CATEGORIA:N",
+                        title="CATEGORIA",
+                        sort=alt.SortField(field="MEDIA_YOY_PCT", order="descending"),
+                    ),
+                    x=alt.X("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
+                    tooltip=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"],
                 )
                 .properties(height=_altura)
             )
             st.altair_chart(chart_yoy, use_container_width=True)
-            topg = df_yoy.iloc[0]
+    
+            # caption usando a linha já ordenada
+            topg = toplot.iloc[0]
             st.caption(
-                f"Top crescimento: **{topg['CATEGORIA']}** — {topg['MEDIA_YOY_PCT']:.2f}% a.a. "
-                f"(último YoY: {topg['ULTIMO_YOY_PCT']:.2f}%; período {int(topg['PRIMEIRO_ANO'])}–{int(topg['ULTIMO_ANO'])})"
+                f"Top crescimento: **{topg['CATEGORIA']}** — {_format_pct_br(topg['MEDIA_YOY_PCT'])} a.a. "
+                f"(último YoY: {_format_pct_br(topg['ULTIMO_YOY_PCT'])}; "
+                f"período {int(topg['PRIMEIRO_ANO'])}–{int(topg['ULTIMO_ANO'])})"
             )
         else:
             st.info("Sem dados para exibir.")
-
+            
 with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
 
@@ -667,4 +698,5 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
