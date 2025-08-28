@@ -579,9 +579,18 @@ with st.container(border=True):
         st.markdown("**Mais compradas (últimos 5 anos)**")
         df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
         if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
-            # exibe top 8 para não poluir
             toplot = df_cat5.head(8).copy()
-            st.bar_chart(data=toplot, x="CATEGORIA", y="VALOR_TOTAL", use_container_width=True)
+            chart_cat = (
+                alt.Chart(toplot)
+                .mark_bar()
+                .encode(
+                    x=alt.X("CATEGORIA:N", title="CATEGORIA", sort="-y"),
+                    y=alt.Y("VALOR_TOTAL:Q", title="VALOR TOTAL"),
+                    tooltip=["CATEGORIA", "VALOR_TOTAL"]
+                )
+                .properties(height=300)
+            )
+            st.altair_chart(chart_cat, use_container_width=True)
             top = df_cat5.iloc[0]
             st.caption(f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({top['PART_%']:.2f}%)")
         else:
@@ -593,7 +602,17 @@ with st.container(border=True):
         df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
         if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
             toplot = df_yoy.head(8).copy()
-            st.bar_chart(data=toplot, x="CATEGORIA", y="MEDIA_YOY_PCT", use_container_width=True)
+            chart_yoy = (
+                alt.Chart(toplot)
+                .mark_bar()
+                .encode(
+                    x=alt.X("CATEGORIA:N", title="CATEGORIA", sort="-y"),
+                    y=alt.Y("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
+                    tooltip=["CATEGORIA", "MEDIA_YOY_PCT"]
+                )
+                .properties(height=300)
+            )
+            st.altair_chart(chart_yoy, use_container_width=True)
             topg = df_yoy.iloc[0]
             st.caption(
                 f"Top crescimento: **{topg['CATEGORIA']}** — {topg['MEDIA_YOY_PCT']:.2f}% a.a. "
@@ -606,12 +625,12 @@ with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
 
     # 1) Categorias dos básicos observadas no ERP
-    st.markdown("**Categorias dos materiais básicos (observadas no ERP):**")
-    df_cats = categorias_basicos_distintos(df)
-    if isinstance(df_cats, pd.DataFrame) and not df_cats.empty:
-        st.dataframe(df_cats, use_container_width=True, hide_index=True)
-    else:
-        st.info("Não encontrei categorias para TIPO_MATERIAL = 'BÁSICO'.")
+    with st.expander("Categorias dos materiais básicos (observadas no ERP)"):
+        df_cats = categorias_basicos_distintos(df)
+        if isinstance(df_cats, pd.DataFrame) and not df_cats.empty:
+            st.dataframe(df_cats, use_container_width=True, hide_index=True)
+        else:
+            st.info("Não encontrei categorias para TIPO_MATERIAL = 'BÁSICO'.")
 
     # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
     st.markdown("**Fornecedores cadastrados aptos (básico) por local**")
@@ -646,7 +665,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
-
-
-
