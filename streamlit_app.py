@@ -618,39 +618,50 @@ with st.container(border=True):
         df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
         if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
             df_yoy = df_yoy.copy()
+    
+            # >>> EXCLUI a categoria "DESPESAS OPERACIONAIS"
+            if "CATEGORIA" in df_yoy.columns:
+                df_yoy = df_yoy[
+                    df_yoy["CATEGORIA"].astype("string").str.strip().str.upper() != "DESPESAS OPERACIONAIS"
+                ]
+    
+            # garante numéricos
             for c in ["MEDIA_YOY_PCT", "ULTIMO_YOY_PCT"]:
                 if c in df_yoy.columns:
                     df_yoy[c] = pd.to_numeric(df_yoy[c], errors="coerce")
-            
-            toplot = df_yoy.sort_values("MEDIA_YOY_PCT", ascending=False).head(8)
-            
-            # altura mais confortável por categoria
-            _altura = max(320, 36 * len(toplot))
-            
-            chart_yoy = (
-                alt.Chart(toplot)
-                .mark_bar()
-                .encode(
-                    y=alt.Y(
-                        "CATEGORIA:N",
-                        title="CATEGORIA",
-                        sort=alt.SortField(field="MEDIA_YOY_PCT", order="descending"),
-                        axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6)  # <<< nomes completos
-                    ),
-                    x=alt.X("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
-                    tooltip=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"]
-                )
-                .properties(height=_altura)
-            )
-            st.altair_chart(chart_yoy, use_container_width=True)
     
-            # caption usando a linha já ordenada
-            topg = toplot.iloc[0]
-            st.caption(
-                f"Top crescimento: **{topg['CATEGORIA']}** — {_format_pct_br(topg['MEDIA_YOY_PCT'])} a.a. "
-                f"(último YoY: {_format_pct_br(topg['ULTIMO_YOY_PCT'])}; "
-                f"período {int(topg['PRIMEIRO_ANO'])}–{int(topg['ULTIMO_ANO'])})"
-            )
+            # se ficar vazio após o filtro
+            if df_yoy.empty:
+                st.info("Sem dados para exibir.")
+            else:
+                # ordena desc e limita a 8
+                toplot = df_yoy.sort_values("MEDIA_YOY_PCT", ascending=False).head(8)
+    
+                # barras horizontais + altura maior + nomes completos
+                _altura = max(320, 36 * len(toplot))
+                chart_yoy = (
+                    alt.Chart(toplot)
+                    .mark_bar()
+                    .encode(
+                        y=alt.Y(
+                            "CATEGORIA:N",
+                            title="CATEGORIA",
+                            sort=alt.SortField(field="MEDIA_YOY_PCT", order="descending"),
+                            axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
+                        ),
+                        x=alt.X("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
+                        tooltip=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"],
+                    )
+                    .properties(height=_altura)
+                )
+                st.altair_chart(chart_yoy, use_container_width=True)
+    
+                topg = toplot.iloc[0]
+                st.caption(
+                    f"Top crescimento: **{topg['CATEGORIA']}** — {_format_pct_br(topg['MEDIA_YOY_PCT'])} a.a. "
+                    f"(último YoY: {_format_pct_br(topg['ULTIMO_YOY_PCT'])}; "
+                    f"período {int(topg['PRIMEIRO_ANO'])}–{int(topg['ULTIMO_ANO'])})"
+                )
         else:
             st.info("Sem dados para exibir.")
             
@@ -698,6 +709,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
