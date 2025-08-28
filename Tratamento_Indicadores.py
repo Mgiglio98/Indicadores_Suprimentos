@@ -591,4 +591,83 @@ def fornecedores_basicos_por_local_cadastro(
 
     return pd.DataFrame(out).sort_values("LOCAL").reset_index(drop=True)
 
+def itens_da_of(df, of_cdg, top_n: int | None = 5):
+    """
+    Lista itens (materiais) de uma OF, ordenados por valor (PRCTTL_INSUMO) desc.
+    Retorna colunas: INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_UNIT | PRECO_TOTAL
+    - Se QUANTIDADE estiver vazia, tenta calcular por PRECO_TOTAL / PRECO_UNIT.
+    """
+    import pandas as pd
 
+    def _pick(cands, cols):
+        for c in cands:
+            if c in cols:
+                return c
+        return None
+
+    base = df.copy()
+    cols = base.columns
+
+    col_of   = _pick(["OF_CDG","PED_CDG","OF","PED"], cols)
+    col_cod  = _pick(["INSUMO_CDG","COD_INSUMO","INSUMO_COD","ITEM_CDG","ITEM_CODIGO"], cols)
+    col_desc = _pick(["INSUMO_DESC","ITEM_DESC","DESCRICAO_INSUMO","DESCRICAO"], cols)
+    col_qtd  = _pick(["QTD_PED","ITEM_QTDSOLIC","QTD_SOLIC","QTDE_SOLICITADA","QTDE","QUANTIDADE",
+                      "ITEM_QTDE","QTD","QTD_ITEM","QTD_PEDIDA","QTD_REQUISITADA"], cols)
+    col_pu   = _pick(["ITEM_PRCUNTPED","PRECO_UNIT","VLR_UNITARIO","VL_UNIT","PRECO_UNITARIO"], cols)
+    col_tot  = _pick(["PRCTTL_INSUMO","VALOR_TOTAL_ITEM","TOTAL","VLR_TOTAL","VL_TOTAL"], cols)
+
+    if not col_of:
+        raise KeyError("Não encontrei a coluna da OF (ex.: OF_CDG).")
+    if not (col_cod and col_desc):
+        raise KeyError("Faltam colunas de item (ex.: INSUMO_CDG / INSUMO_DESC).")
+
+    # Filtra a OF alvo
+    alvo = base[base[col_of] == of_cdg].copy()
+    if alvo.empty:
+        return pd.DataFrame(columns=["INSUMO_CDG","INSUMO_DESC","QUANTIDADE","PRECO_UNIT","PRECO_TOTAL"])
+
+    # Numéricos
+    if col_qtd: alvo[col_qtd] = pd.to_numeric(alvo[col_qtd], errors="coerce")
+    if col_pu:  alvo[col_pu]  = pd.to_numeric(alvo[col_pu],  errors="coerce")
+    if col_tot: alvo[col_tot] = pd.to_numeric(alvo[col_tot], errors="coerce")
+
+    # Total por linha
+    if col_tot:
+        alvo["_TOTAL_ITEM_"] = alvo[col_tot]
+    elif col_qtd and col_pu:
+        alvo["_TOTAL_ITEM_"] = alvo[col_qtd] * alvo[col_pu]
+    else:
+        alvo["_TOTAL_ITEM_"] = pd.NA  # sem total; retornará vazio
+
+    alvo = alvo.dropna(subset=["_TOTAL_ITEM_"]).copy()
+    if alvo.empty:
+        return pd.DataFrame(columns=["INSUMO_CDG","INSUMO_DESC","QUANTIDADE","PRECO_UNIT","PRECO_TOTAL"])
+
+    # Quantidade (fallback por total / PU)
+    qtd = None
+    if col_qtd:
+        qtd = alvo[col_qtd]
+    elif col_pu:
+        with pd.option_context("mode.use_inf_as_na", True):
+            qtd = alvo["_TOTAL_ITEM_"] / alvo[col_pu]
+    else:
+        qtd = pd.Series([pd.NA] * len(alvo), index=alvo.index)
+
+    out = pd.DataFrame({
+        "INSUMO_CDG":  alvo[col_cod].astype("string"),
+        "INSUMO_DESC": alvo[col_desc].astype("string"),
+        "QUANTIDADE":  pd.to_numeric(qtd, errors="coerce"),
+        "PRECO_UNIT":  pd.to_numeric(alvo[col_pu], errors="coerce") if col_pu else pd.NA,
+        "PRECO_TOTAL": pd.to_numeric(alvo["_TOTAL_ITEM_"], errors="coerce"),
+    })
+
+    out = out.sort_values("PRECO_TOTAL", ascending=False)
+    if top_n:
+        out = out.head(int(top_n))
+
+    # Arredondamentos finais
+    for c in ["QUANTIDADE","PRECO_UNIT","PRECO_TOTAL"]:
+        if c in out.columns:
+            out[c] = pd.to_numeric(out[c], errors="coerce").round(2)
+
+    return out.reset_index(drop=True)
