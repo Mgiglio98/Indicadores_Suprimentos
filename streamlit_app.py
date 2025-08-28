@@ -615,7 +615,7 @@ with st.container(border=True):
     # Maior taxa de crescimento (CAGR desde o início dos registros)
     # Maior taxa de crescimento (CAGR desde o início dos registros)
     try:
-        res_cagr = categorias_cagr_desde_inicio(df, min_prev=1_000, min_anos=2)  # ↓ mais permissivo
+        res_cagr = categorias_cagr_desde_inicio(df, min_prev=0, min_anos=2)
         if isinstance(res_cagr, pd.DataFrame) and not res_cagr.empty:
             if "CATEGORIA" not in res_cagr.columns and "INSUMO_CATEGORIA" in res_cagr.columns:
                 res_cagr = res_cagr.rename(columns={"INSUMO_CATEGORIA": "CATEGORIA"})
@@ -684,6 +684,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
