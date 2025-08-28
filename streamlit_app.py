@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 try:
     from zoneinfo import ZoneInfo
-    _TZ = ZoneInfo("America/Sao_Paulo")  # fuso BR
+    _TZ = ZoneInfo("America/Sao_Paulo")
 except Exception:
     _TZ = None
 
@@ -16,23 +16,17 @@ from Tratamento_Indicadores import (
     menor_ordem_fornecimento,
     valor_medio_por_of,
     percentual_ofs_basicas_ultimo_ano,
-    periodo_maior_volume_bimestre,
     mes_maior_volume_ultimo_ano,
     _format_brl,
     quantidade_empresas_que_venderam_ultimos_3_anos,
-    mes_maior_volume_geral,
     meses_top3_volume_geral,
     maior_compra_item_unico,
     categorias_mais_compradas_ultimos_anos,
-    categorias_crescimento_yoy,
     categorias_basicos_distintos,
     fornecedores_basicos_por_local_cadastro,
     menor_compra_item_unico,
     valor_medio_por_item,
     itens_da_of,
-    categorias_yoy_series,
-    categorias_cagr_desde_inicio,
-    categoria_top_cagr,
     categorias_crescimento_desde_2015,
 )
 
@@ -47,24 +41,6 @@ st.set_page_config(page_title="Suprimentos • Indicadores & Fornecedores", layo
 st.title("Suprimentos • Indicadores e Fornecedores")
 
 # ---------- Helpers ----------
-def _col(df: pd.DataFrame, candidatos):
-    """1ª coluna existente entre candidatos/aliases (case-insensitive)."""
-    aliases = {
-        "DATA_OF": ["OF_DATA", "PED_DT", "REQ_DATA", "DATA", "DT"],
-        "EMPRD_UF": ["UF_OBRA", "OBRA_UF", "UF"],
-        "FORNECEDOR_UF": ["FORN_UF", "UF_FORN", "UF"],
-    }
-    lista = []
-    for c in candidatos:
-        lista.append(c)
-        lista.extend(aliases.get(c, []))
-    up = {c.strip().upper(): c for c in df.columns}
-    for cand in lista:
-        k = cand.strip().upper()
-        if k in up:
-            return up[k]
-    raise KeyError(f"Nenhuma dessas colunas: {lista}. Disponíveis: {list(df.columns)}")
-
 def _safe(fn, *a, **k):
     try:
         return fn(*a, **k)
@@ -96,35 +72,23 @@ def _fmt_df_brl(df: pd.DataFrame,
                 ints: list[str] | None = None,
                 pcts: list[str] | None = None,
                 decimals: list[str] | None = None) -> pd.DataFrame:
-    """
-    Converte colunas numéricas para strings PT-BR:
-      - money:    "R$ 1.234,56"
-      - ints:     "1.234"
-      - pcts:     "12,34%"
-      - decimals: "1.234,56" (sem "R$")
-    Obs.: usar APENAS em tabelas (st.dataframe). Para gráficos, manter numérico.
-    """
     out = df.copy()
-
     # Moeda
     if money:
         for c in money:
             if c in out.columns:
                 out[c] = pd.to_numeric(out[c], errors="coerce").map(lambda v: _format_brl(v) if pd.notna(v) else "—")
-
     # Inteiros
     if ints:
         for c in ints:
             if c in out.columns:
                 s = pd.to_numeric(out[c], errors="coerce").fillna(0)
                 out[c] = s.astype(int).map(lambda n: f"{n:,}".replace(",", "."))
-
     # Percentuais
     if pcts:
         for c in pcts:
             if c in out.columns:
                 out[c] = pd.to_numeric(out[c], errors="coerce").map(lambda v: _format_pct_br(v) if pd.notna(v) else "—")
-
     # Decimais gerais
     if decimals:
         for c in decimals:
@@ -132,7 +96,6 @@ def _fmt_df_brl(df: pd.DataFrame,
                 out[c] = pd.to_numeric(out[c], errors="coerce").map(
                     lambda v: f"{v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if pd.notna(v) else "—"
                 )
-
     return out
 
 def _fill_last_n_years(df: pd.DataFrame, year_col: str = "ANO", y_col: str = "FORNECEDORES_ATIVOS", n: int = 10) -> pd.DataFrame:
@@ -476,7 +439,6 @@ with st.container(border=True):
     st.subheader("📈 Volumes por período")
 
     c1, c2 = st.columns(2)
-
     # Top 3 meses (últimos 12 meses)
     with c1:
         st.markdown("**Top 3 meses (últimos 12 meses)**")
