@@ -631,11 +631,18 @@ with st.container(border=True):
                 st.info("Sem dados para exibir.")
             else:
                 # Top-5 categorias por crescimento médio no período
-                rank = (s.groupby("CATEGORIA")["YOY_PCT"]
-                          .mean(skipna=True)
-                          .sort_values(ascending=False)
-                          .head(5)
-                          .index.tolist())
+                base_rank = s.dropna(subset=["YOY_PCT"])
+                rank = (
+                    base_rank.groupby("CATEGORIA")["YOY_PCT"]
+                    .mean()                           
+                    .sort_values(ascending=False)
+                    .head(5)
+                    .index.tolist()
+                )
+                
+                if not rank:
+                    st.info("Sem dados suficientes para calcular o crescimento YoY.")
+                    st.stop()
                 s = s[s["CATEGORIA"].isin(rank)].copy()
     
                 # Eixo X legível (anos sem pontuação) + tooltip amigável
@@ -709,6 +716,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
