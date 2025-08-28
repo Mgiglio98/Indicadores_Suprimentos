@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import altair as alt
 from pathlib import Path
 from datetime import datetime
 try:
@@ -519,12 +520,19 @@ with st.container(border=True):
     try:
         serie_cad = serie_fornecedores_cadastrados_por_ano(df_forn, anos=10)
         if isinstance(serie_cad, pd.DataFrame) and not serie_cad.empty:
-            st.line_chart(
-                data=serie_cad,
-                x="ANO",
-                y="FORNECEDORES_CADASTRADOS",
-                use_container_width=True,
+            serie_cad_vis = serie_cad.copy()
+            serie_cad_vis["ANO_TXT"] = serie_cad_vis["ANO"].astype(str)
+            
+            chart_cad = (
+                alt.Chart(serie_cad_vis)
+                .mark_line(point=True)
+                .encode(
+                    x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),  # horizontal, sem separadores
+                    y=alt.Y("FORNECEDORES_CADASTRADOS:Q", title="FORNECEDORES CADASTRADOS"),
+                )
+                .properties(height=300)
             )
+            st.altair_chart(chart_cad, use_container_width=True)
         else:
             st.info("Sem dados para exibir.")
     except Exception as e:
@@ -538,12 +546,20 @@ with st.container(border=True):
         # garante anos contínuos (0 quando não teve fornecedor ativo)
         serie_plot = _fill_last_n_years(serie, year_col="ANO", y_col="FORNECEDORES_ATIVOS", n=10)
 
-        st.bar_chart(
-            data=serie_plot,
-            x="ANO",
-            y="FORNECEDORES_ATIVOS",
-            use_container_width=True,
+        serie_plot_vis = serie_plot.copy()
+        serie_plot_vis["ANO_TXT"] = serie_plot_vis["ANO"].astype(str)
+        
+        chart_ativos = (
+            alt.Chart(serie_plot_vis)
+            .mark_bar()
+            .encode(
+                x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("FORNECEDORES_ATIVOS:Q", title="FORNECEDORES ATIVOS"),
+                tooltip=["ANO_TXT", "FORNECEDORES_ATIVOS"]
+            )
+            .properties(height=300)
         )
+        st.altair_chart(chart_ativos, use_container_width=True)
 
         st.caption(
             f"Variação {resumo['primeiro_ano']} → {resumo['ultimo_ano']}: "
@@ -617,14 +633,6 @@ with st.container(border=True):
         k2.metric("SP — fornecedores básicos (cad.)", _fmt(sp))
         k3.metric("SC — fornecedores básicos (cad.)", _fmt(sc))
 
-        with st.expander("Ver detalhes"):
-            df_tbl = df_res[["LOCAL","FORNECEDORES_BÁSICO_CAD"]].sort_values("LOCAL")
-            df_tbl_fmt = _fmt_df_brl(df_tbl, ints=["FORNECEDORES_BÁSICO_CAD"])
-            st.dataframe(
-                df_tbl_fmt,
-                use_container_width=True, hide_index=True,
-                column_config={"FORNECEDORES_BÁSICO_CAD": st.column_config.TextColumn("FORNECEDORES_BÁSICO_CAD")}
-            )
     else:
         st.info("Sem dados para compor os contadores por local.")
         
@@ -638,6 +646,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
