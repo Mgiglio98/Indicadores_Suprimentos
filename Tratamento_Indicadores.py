@@ -723,11 +723,13 @@ def categorias_cagr_desde_inicio(
     col_cat: str = "INSUMO_CATEGORIA",
     col_data: str = "OF_DATA",
     col_val: str = "PRCTTL_INSUMO",
-    min_prev: float = 10_000.0,   # valor mínimo no 1º ano para calcular CAGR
+    min_prev: float = 1_000.0,   # ↓ mais permissivo que 10k
+    min_anos: int = 2            # exige pelo menos 2 anos com movimento
 ) -> pd.DataFrame:
     """
-    CAGR por categoria desde o 1º ano útil até o último ano disponível.
-    Retorna colunas: CATEGORIA | ANO_INICIO | ANO_FIM | VALOR_INICIO | VALOR_FIM | ANOS | CAGR_% | CRESC_TOTAL_%
+    CAGR por categoria desde o primeiro ano útil (com valor >0; preferindo >= min_prev)
+    até o último ano disponível. Exige pelo menos `min_anos` anos com movimento.
+    Retorna: CATEGORIA | ANO_INICIO | ANO_FIM | VALOR_INICIO | VALOR_FIM | ANOS | CAGR_% | CRESC_TOTAL_%
     """
     import pandas as pd
     import numpy as np
@@ -741,28 +743,28 @@ def categorias_cagr_desde_inicio(
     base[col_data] = pd.to_datetime(base[col_data], errors="coerce")
     base[col_val]  = pd.to_numeric(base[col_val], errors="coerce")
     base = base.dropna(subset=[col_data, col_val])
-
     base["ANO"] = base[col_data].dt.year
 
     anuais = (base.groupby([col_cat, "ANO"])[col_val]
                    .sum()
                    .reset_index(name="VALOR_ANO")
-                   .sort_values(["CATEGORIA","ANO"]))
+                   .sort_values([col_cat, "ANO"]))
 
-    out_rows = []
+    out = []
     for cat, g in anuais.groupby(col_cat):
         g = g.sort_values("ANO")
-        # primeiro ano com base mínima
-        g_valid = g[g["VALOR_ANO"] >= float(min_prev)]
-        if g_valid.empty:
+        g_pos = g[g["VALOR_ANO"] > 0].copy()
+        if g_pos["ANO"].nunique() < min_anos:
             continue
-        y0 = int(g_valid.iloc[0]["ANO"])
-        v0 = float(g_valid.iloc[0]["VALOR_ANO"])
 
-        # último ano com algum valor (pode ser < min_prev)
-        y1 = int(g.iloc[-1]["ANO"])
-        v1 = float(g.iloc[-1]["VALOR_ANO"])
+        # primeiro ano candidato (>= min_prev, senão usa o 1º >0)
+        g_base = g_pos[g_pos["VALOR_ANO"] >= float(min_prev)]
+        if not g_base.empty:
+            y0, v0 = int(g_base.iloc[0]["ANO"]), float(g_base.iloc[0]["VALOR_ANO"])
+        else:
+            y0, v0 = int(g_pos.iloc[0]["ANO"]), float(g_pos.iloc[0]["VALOR_ANO"])
 
+        y1, v1 = int(g_pos.iloc[-1]["ANO"]), float(g_pos.iloc[-1]["VALOR_ANO"])
         anos = y1 - y0
         if anos <= 0 or v0 <= 0:
             continue
@@ -770,7 +772,7 @@ def categorias_cagr_desde_inicio(
         cagr = (v1 / v0) ** (1.0 / anos) - 1.0
         cresc_total = (v1 - v0) / v0
 
-        out_rows.append({
+        out.append({
             "CATEGORIA": cat,
             "ANO_INICIO": y0,
             "ANO_FIM": y1,
@@ -781,12 +783,11 @@ def categorias_cagr_desde_inicio(
             "CRESC_TOTAL_%": round(cresc_total * 100.0, 2),
         })
 
-    res = pd.DataFrame(out_rows)
+    res = pd.DataFrame(out)
     if res.empty:
         return res
-
-    # ordena do maior CAGR para o menor
-    res = res.sort_values("CAGR_%", ascending=False).reset_index(drop=True)
+    res["CAGR_%"] = pd.to_numeric(res["CAGR_%"], errors="coerce")
+    res = res.dropna(subset=["CAGR_%"]).sort_values("CAGR_%", ascending=False).reset_index(drop=True)
     return res
 
 def categoria_top_cagr(df, **kwargs) -> pd.Series | None:
@@ -798,3 +799,4 @@ def categoria_top_cagr(df, **kwargs) -> pd.Series | None:
     if isinstance(r, pd.DataFrame) and not r.empty:
         return r.iloc[0]
     return None
+
