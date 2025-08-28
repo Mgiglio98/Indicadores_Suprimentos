@@ -101,11 +101,15 @@ def maior_ordem_fornecimento(df):
             TOTAL_ITENS=("INSUMO_CDG", "nunique"),
         )
         .reset_index()
-        .sort_values("VALOR_TOTAL", ascending=False)
-        .head(1)
     )
+    # >>> NOVO: excluir OFs com total <= 0 (ou NaN)
+    g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce")
+    g = g[g["VALOR_TOTAL"] > 0]
+
     if g.empty:
         return g
+
+    g = g.sort_values("VALOR_TOTAL", ascending=False).head(1)
     g["DATA_OF"] = pd.to_datetime(g["DATA_OF"]).dt.strftime("%d/%m/%Y")
     g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce").round(2)
     return g
@@ -113,6 +117,7 @@ def maior_ordem_fornecimento(df):
 def menor_ordem_fornecimento(df):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+
     g = (
         df.groupby("OF_CDG")
         .agg(
@@ -120,15 +125,19 @@ def menor_ordem_fornecimento(df):
             EMPRD_DESC=("EMPRD_DESC", "first"),
             FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
             DATA_OF=("OF_DATA_DT", "first"),
-            #INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x)))),
             TOTAL_ITENS=("INSUMO_CDG", "nunique"),
         )
         .reset_index()
-        .sort_values("VALOR_TOTAL", ascending=True)
-        .head(1)
     )
+
+    # >>> NOVO: excluir OFs com total <= 0 (ou NaN)
+    g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce")
+    g = g[g["VALOR_TOTAL"] > 0]
+
     if g.empty:
         return g
+
+    g = g.sort_values("VALOR_TOTAL", ascending=True).head(1)
     g["DATA_OF"] = pd.to_datetime(g["DATA_OF"]).dt.strftime("%d/%m/%Y")
     g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce").round(2)
     return g
@@ -671,3 +680,4 @@ def itens_da_of(df, of_cdg, top_n: int | None = 5):
             out[c] = pd.to_numeric(out[c], errors="coerce").round(2)
 
     return out.reset_index(drop=True)
+
