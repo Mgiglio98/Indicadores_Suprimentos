@@ -2,12 +2,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import unicodedata
-from typing import Optional, List, Tuple
-
-_BI_LABEL = {
-    1: "Jan–Fev", 2: "Jan–Fev", 3: "Mar–Abr", 4: "Mar–Abr", 5: "Mai–Jun", 6: "Mai–Jun",
-    7: "Jul–Ago", 8: "Jul–Ago", 9: "Set–Out", 10: "Set–Out", 11: "Nov–Dez", 12: "Nov–Dez"
-}
+from typing import Optional, List
 
 def _format_brl(v):
     return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
@@ -165,60 +160,11 @@ def percentual_ofs_basicas_ultimo_ano(df):
     pct = (bas / total * 100.0) if total else 0.0
     return pct, grp
 
-def periodo_maior_volume_bimestre(df, anos=10, top_n=None, estacionalidade=False):
-    df = df.copy()
-    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
-    limite = pd.Timestamp.today() - pd.DateOffset(years=anos)
-    base = df[df["OF_DATA_DT"] >= limite].copy()
-    if base.empty:
-        cols = ["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS", "PART_%"] if estacionalidade else ["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS"]
-        return pd.DataFrame(columns=cols)
-
-    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
-    base["BIMESTRE"] = np.ceil(base["OF_DATA_DT"].dt.month / 2).astype(int)
-    base["BIMESTRE_ROTULO"] = base["OF_DATA_DT"].dt.month.map(_BI_LABEL)
-
-    agg = (
-        base.groupby(["BIMESTRE", "BIMESTRE_ROTULO"])
-        .agg(VALOR_TOTAL=("PRCTTL_INSUMO", "sum"), QTDE_OFS=("OF_CDG", "nunique"))
-        .reset_index()
-    )
-    agg["VALOR_TOTAL"] = pd.to_numeric(agg["VALOR_TOTAL"], errors="coerce")
-
-    if estacionalidade:
-        total = agg["VALOR_TOTAL"].sum()
-        agg["PART_%"] = (agg["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
-        out = agg.sort_values("BIMESTRE")[["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS", "PART_%"]].copy()
-    else:
-        agg = agg.sort_values("VALOR_TOTAL", ascending=False)
-        if top_n:
-            agg = agg.head(int(top_n))
-        out = agg[["BIMESTRE_ROTULO", "VALOR_TOTAL", "QTDE_OFS"]].copy()
-
-    out["VALOR_TOTAL"] = out["VALOR_TOTAL"].round(2)
-    return out
-
 def mes_maior_volume_ultimo_ano(df, top_n=3):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
     limite = pd.Timestamp.today() - pd.DateOffset(years=1)
     base = df[df["OF_DATA_DT"] >= limite].copy()
-    if base.empty:
-        return pd.DataFrame(columns=["ANO_MES", "VALOR_TOTAL", "PART_%"])
-    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
-    base["ANO_MES"] = base["OF_DATA_DT"].dt.to_period("M")
-    res = (base.groupby("ANO_MES")["PRCTTL_INSUMO"].sum()
-           .reset_index(name="VALOR_TOTAL")
-           .sort_values("VALOR_TOTAL", ascending=False))
-    total = res["VALOR_TOTAL"].sum()
-    res["PART_%"] = (res["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
-    res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
-    return res.head(int(top_n))
-
-def mes_maior_volume_geral(df, top_n=3):
-    df = df.copy()
-    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
-    base = df.dropna(subset=["OF_DATA_DT"]).copy()
     if base.empty:
         return pd.DataFrame(columns=["ANO_MES", "VALOR_TOTAL", "PART_%"])
     base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
@@ -289,13 +235,6 @@ def meses_top3_volume_geral(df, top_n=3):
     return out[["MES_ROTULO", "VALOR_TOTAL", "PART_%"]]
 
 def maior_compra_item_unico(df):
-    """
-    Retorna 1 linha com a maior compra de item:
-    INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_TOTAL
-    - Se QTDE não existir, calcula via PRECO_TOTAL / PRECO_UNIT.
-    """
-    import pandas as pd
-
     def _pick(cands, cols):
         for c in cands:
             if c in cols: return c
@@ -357,14 +296,6 @@ def maior_compra_item_unico(df):
     return out
 
 def menor_compra_item_unico(df):
-    """
-    Retorna 1 linha com a menor compra de item (linha de pedido):
-    INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_TOTAL
-    - Se QTDE não existir, tenta calcular via PRECO_TOTAL / PRECO_UNIT.
-    - Prioriza valores POSITIVOS; se não houver, usa o menor valor disponível.
-    """
-    import pandas as pd
-
     def _pick(cands, cols):
         for c in cands:
             if c in cols:
@@ -430,12 +361,6 @@ def menor_compra_item_unico(df):
     return out
 
 def valor_medio_por_item(df):
-    """
-    Ticket médio por linha (PRCTTL_INSUMO). Retorna (media, df_linhas).
-    df_linhas: uma coluna 'PRECO_TOTAL_ITEM' com os valores usados no cálculo.
-    """
-    import pandas as pd
-
     if "PRCTTL_INSUMO" not in df.columns:
         return 0.0, pd.DataFrame(columns=["PRECO_TOTAL_ITEM"])
 
@@ -450,11 +375,6 @@ def valor_medio_por_item(df):
     return round(media, 2), out
     
 def categorias_mais_compradas_ultimos_anos(df, anos=5, col_cat="INSUMO_CATEGORIA"):
-    """
-    Top de categorias por valor total nos últimos `anos`.
-    Retorna: CATEGORIA | VALOR_TOTAL | PART_%
-    """
-    import pandas as pd
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
     base = df[df["OF_DATA_DT"] >= pd.Timestamp.today() - pd.DateOffset(years=anos)].copy()
@@ -469,47 +389,6 @@ def categorias_mais_compradas_ultimos_anos(df, anos=5, col_cat="INSUMO_CATEGORIA
     grp["PART_%"] = (grp["VALOR_TOTAL"] / tot * 100).round(2) if tot else 0.0
     grp["VALOR_TOTAL"] = grp["VALOR_TOTAL"].round(2)
     return grp.sort_values("VALOR_TOTAL", ascending=False)
-
-
-def categorias_crescimento_yoy(df, anos=5, col_cat="INSUMO_CATEGORIA"):
-    """
-    Crescimento médio YoY por categoria nos últimos `anos`.
-    Retorna: CATEGORIA | MEDIA_YOY_PCT | ULTIMO_YOY_PCT | PRIMEIRO_ANO | ULTIMO_ANO
-    """
-    import pandas as pd
-    df = df.copy()
-    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
-    base = df[df["OF_DATA_DT"] >= pd.Timestamp.today() - pd.DateOffset(years=anos)].copy()
-    if base.empty or col_cat not in base.columns:
-        return pd.DataFrame(columns=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"])
-
-    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
-    base["ANO"] = base["OF_DATA_DT"].dt.year
-    agg = (base.groupby([col_cat, "ANO"])["PRCTTL_INSUMO"].sum()
-           .reset_index()
-           .sort_values([col_cat, "ANO"]))
-
-    # YoY por categoria
-    agg["YOY_PCT"] = agg.groupby(col_cat)["PRCTTL_INSUMO"].pct_change() * 100
-
-    def _avg(s): 
-        s = s.dropna()
-        return float(s.mean()) if not s.empty else 0.0
-
-    def _last(s):
-        s = s.dropna()
-        return float(s.iloc[-1]) if not s.empty else 0.0
-
-    res = (agg.groupby(col_cat)
-           .agg(MEDIA_YOY_PCT=("YOY_PCT", _avg),
-                ULTIMO_YOY_PCT=("YOY_PCT", _last),
-                PRIMEIRO_ANO=("ANO", "min"),
-                ULTIMO_ANO=("ANO", "max"))
-           .reset_index()
-           .rename(columns={col_cat: "CATEGORIA"}))
-    res["MEDIA_YOY_PCT"] = res["MEDIA_YOY_PCT"].round(2)
-    res["ULTIMO_YOY_PCT"] = res["ULTIMO_YOY_PCT"].round(2)
-    return res.sort_values("MEDIA_YOY_PCT", ascending=False)
 
 def _norm_txt(s: str) -> str:
     if s is None:
@@ -601,13 +480,6 @@ def fornecedores_basicos_por_local_cadastro(
     return pd.DataFrame(out).sort_values("LOCAL").reset_index(drop=True)
 
 def itens_da_of(df, of_cdg, top_n: int | None = 5):
-    """
-    Lista itens (materiais) de uma OF, ordenados por valor (PRCTTL_INSUMO) desc.
-    Retorna colunas: INSUMO_CDG | INSUMO_DESC | QUANTIDADE | PRECO_UNIT | PRECO_TOTAL
-    - Se QUANTIDADE estiver vazia, tenta calcular por PRECO_TOTAL / PRECO_UNIT.
-    """
-    import pandas as pd
-
     def _pick(cands, cols):
         for c in cands:
             if c in cols:
@@ -681,125 +553,6 @@ def itens_da_of(df, of_cdg, top_n: int | None = 5):
 
     return out.reset_index(drop=True)
 
-def categorias_yoy_series(df, anos=5, col_cat="INSUMO_CATEGORIA"):
-    """
-    Retorna a série YoY por CATEGORIA e ANO nos últimos `anos`.
-    Colunas: CATEGORIA | ANO | YOY_PCT
-    Obs.: inclui ano anterior no filtro para conseguir calcular o YoY do 1º ano do período.
-    """
-    import pandas as pd
-    import numpy as np
-
-    base = df.copy()
-    if col_cat not in base.columns:
-        return pd.DataFrame(columns=["CATEGORIA","ANO","YOY_PCT"])
-
-    base["OF_DATA_DT"] = pd.to_datetime(base["OF_DATA"], errors="coerce")
-    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
-    base = base.dropna(subset=["OF_DATA_DT", "PRCTTL_INSUMO"])
-
-    ano_atual = pd.Timestamp.today().year
-    # pega anos +1 para ter referência do pct_change
-    limite = ano_atual - anos
-    base["ANO"] = base["OF_DATA_DT"].dt.year
-    base = base[base["ANO"] >= limite - 1]  # ano anterior ao recorte
-
-    agg = (base.groupby([col_cat, "ANO"])["PRCTTL_INSUMO"]
-               .sum()
-               .reset_index()
-               .sort_values([col_cat, "ANO"]))
-
-    agg["YOY_PCT"] = agg.groupby(col_cat)["PRCTTL_INSUMO"].pct_change() * 100
-
-    out = (agg[agg["ANO"] >= limite]  # mantém somente os anos do recorte pro gráfico
-             .rename(columns={col_cat: "CATEGORIA"})
-             [["CATEGORIA","ANO","YOY_PCT"]]
-             .copy())
-    out["YOY_PCT"] = pd.to_numeric(out["YOY_PCT"], errors="coerce").round(2)
-    return out.reset_index(drop=True)
-
-def categorias_cagr_desde_inicio(
-    df,
-    col_cat: str = "INSUMO_CATEGORIA",
-    col_data: str = "OF_DATA",
-    col_val: str = "PRCTTL_INSUMO",
-    min_prev: float = 1_000.0,   # ↓ mais permissivo que 10k
-    min_anos: int = 2            # exige pelo menos 2 anos com movimento
-) -> pd.DataFrame:
-    """
-    CAGR por categoria desde o primeiro ano útil (com valor >0; preferindo >= min_prev)
-    até o último ano disponível. Exige pelo menos `min_anos` anos com movimento.
-    Retorna: CATEGORIA | ANO_INICIO | ANO_FIM | VALOR_INICIO | VALOR_FIM | ANOS | CAGR_% | CRESC_TOTAL_%
-    """
-    import pandas as pd
-    import numpy as np
-
-    base = df.copy()
-    if col_cat not in base.columns:
-        return pd.DataFrame(columns=[
-            "CATEGORIA","ANO_INICIO","ANO_FIM","VALOR_INICIO","VALOR_FIM","ANOS","CAGR_%","CRESC_TOTAL_%"
-        ])
-
-    base[col_data] = pd.to_datetime(base[col_data], errors="coerce")
-    base[col_val]  = pd.to_numeric(base[col_val], errors="coerce")
-    base = base.dropna(subset=[col_data, col_val])
-    base["ANO"] = base[col_data].dt.year
-
-    anuais = (base.groupby([col_cat, "ANO"])[col_val]
-                   .sum()
-                   .reset_index(name="VALOR_ANO")
-                   .sort_values([col_cat, "ANO"]))
-
-    out = []
-    for cat, g in anuais.groupby(col_cat):
-        g = g.sort_values("ANO")
-        g_pos = g[g["VALOR_ANO"] > 0].copy()
-        if g_pos["ANO"].nunique() < min_anos:
-            continue
-
-        # primeiro ano candidato (>= min_prev, senão usa o 1º >0)
-        g_base = g_pos[g_pos["VALOR_ANO"] >= float(min_prev)]
-        if not g_base.empty:
-            y0, v0 = int(g_base.iloc[0]["ANO"]), float(g_base.iloc[0]["VALOR_ANO"])
-        else:
-            y0, v0 = int(g_pos.iloc[0]["ANO"]), float(g_pos.iloc[0]["VALOR_ANO"])
-
-        y1, v1 = int(g_pos.iloc[-1]["ANO"]), float(g_pos.iloc[-1]["VALOR_ANO"])
-        anos = y1 - y0
-        if anos <= 0 or v0 <= 0:
-            continue
-
-        cagr = (v1 / v0) ** (1.0 / anos) - 1.0
-        cresc_total = (v1 - v0) / v0
-
-        out.append({
-            "CATEGORIA": cat,
-            "ANO_INICIO": y0,
-            "ANO_FIM": y1,
-            "VALOR_INICIO": round(v0, 2),
-            "VALOR_FIM": round(v1, 2),
-            "ANOS": anos,
-            "CAGR_%": round(cagr * 100.0, 2),
-            "CRESC_TOTAL_%": round(cresc_total * 100.0, 2),
-        })
-
-    res = pd.DataFrame(out)
-    if res.empty:
-        return res
-    res["CAGR_%"] = pd.to_numeric(res["CAGR_%"], errors="coerce")
-    res = res.dropna(subset=["CAGR_%"]).sort_values("CAGR_%", ascending=False).reset_index(drop=True)
-    return res
-
-def categoria_top_cagr(df, **kwargs) -> pd.Series | None:
-    """
-    Retorna a 1ª linha do ranking de CAGR (maior taxa).
-    kwargs são repassados a categorias_cagr_desde_inicio (ex.: min_prev=10000).
-    """
-    r = categorias_cagr_desde_inicio(df, **kwargs)
-    if isinstance(r, pd.DataFrame) and not r.empty:
-        return r.iloc[0]
-    return None
-
 def categorias_com_venda_continua_ultimos_anos(
     df,
     anos: int = 5,
@@ -807,12 +560,6 @@ def categorias_com_venda_continua_ultimos_anos(
     col_data: str = "OF_DATA",
     col_val: str = "PRCTTL_INSUMO",
 ):
-    """
-    Retorna um set com as categorias que têm venda (>0) em CADA um dos últimos `anos`.
-    A janela é [ultimo_ano - anos + 1 .. ultimo_ano], onde ultimo_ano é o maior ano presente na base.
-    """
-    import pandas as pd
-
     base = df.copy()
     base[col_data] = pd.to_datetime(base[col_data], errors="coerce")
     base[col_val]  = pd.to_numeric(base[col_val], errors="coerce")
@@ -849,13 +596,6 @@ def categorias_crescimento_desde_2015(
     clip_pct: float | None = 500.0,
     require_continuous_last_n: int | None = None,  # <<< novo
 ) -> pd.DataFrame:
-    """
-    Taxa anual de crescimento por categoria no período fixo start_year → último ano do dataset.
-    - Se require_continuous_last_n for definido, mantém apenas categorias com venda (>0)
-      em CADA um dos últimos N anos.
-    Retorna: CATEGORIA | ANO_INICIO | ANO_FIM | VALOR_INICIO | VALOR_FIM | ANOS | METODO | CRESC_AA_%
-    """
-    import pandas as pd, numpy as np
 
     base = df.copy()
     if col_cat not in base.columns:
@@ -948,3 +688,4 @@ def categorias_crescimento_desde_2015(
     if res.empty:
         return res
     return res.sort_values("CRESC_AA_%", ascending=False).reset_index(drop=True)
+
