@@ -33,6 +33,7 @@ from Tratamento_Indicadores import (
     categorias_yoy_series,
     categorias_cagr_desde_inicio,
     categoria_top_cagr,
+    categorias_crescimento_desde_2015,
 )
 
 from fornecedores_core import (
@@ -612,33 +613,26 @@ with st.container(border=True):
     else:
         st.info("Sem dados para exibir.")
 
-    # Maior taxa de crescimento (CAGR desde o início dos registros)
-    # Maior taxa de crescimento (CAGR desde o início dos registros)
+    # Maior crescimento desde 2015 (fixo 2015 → último ano)
     try:
-        res_cagr = categorias_cagr_desde_inicio(df, min_prev=0, min_anos=2)
-        if isinstance(res_cagr, pd.DataFrame) and not res_cagr.empty:
-            if "CATEGORIA" not in res_cagr.columns and "INSUMO_CATEGORIA" in res_cagr.columns:
-                res_cagr = res_cagr.rename(columns={"INSUMO_CATEGORIA": "CATEGORIA"})
-            if "CAGR_%" in res_cagr.columns:
-                res_cagr["CAGR_%"] = pd.to_numeric(res_cagr["CAGR_%"], errors="coerce")
-                res_cagr = res_cagr.dropna(subset=["CAGR_%"])
+        col_cat_ref = "INSUMO_CATEGORIA_NORM" if "INSUMO_CATEGORIA_NORM" in df.columns else "INSUMO_CATEGORIA"
+        res_g = categorias_crescimento_desde_2015(df, start_year=2015, col_cat=col_cat_ref)
     
-            # opcional: excluir categorias específicas
-            res_cagr = res_cagr[res_cagr["CATEGORIA"].astype(str).str.upper() != "DESPESAS OPERACIONAIS"]
+        # opcional: excluir categorias específicas
+        if isinstance(res_g, pd.DataFrame) and not res_g.empty:
+            res_g = res_g[res_g["CATEGORIA"].astype(str).str.upper() != "DESPESAS OPERACIONAIS"]
     
-            if not res_cagr.empty:
-                top = res_cagr.iloc[0]
-                st.caption(
-                    "Maior taxa de crescimento desde o início (CAGR): "
-                    f"**{top['CATEGORIA']}** — {float(top['CAGR_%']):.2f}% a.a. "
-                    f"({int(top['ANO_INICIO'])}→{int(top['ANO_FIM'])})."
-                )
-            else:
-                st.caption("Não há categorias elegíveis para CAGR após os filtros (ex.: base mínima, anos insuficientes).")
+        if isinstance(res_g, pd.DataFrame) and not res_g.empty:
+            topg = res_g.iloc[0]
+            st.caption(
+                "Maior crescimento desde 2015: "
+                f"**{topg['CATEGORIA']}** — {float(topg['CRESC_AA_%']):.2f}% a.a. "
+                f"({int(topg['ANO_INICIO'])}→{int(topg['ANO_FIM'])}, método: {topg['METODO']})."
+            )
         else:
-            st.caption("Não foi possível calcular o CAGR: resultado vazio.")
+            st.caption("Não foi possível determinar a categoria com maior crescimento no período 2015→último ano.")
     except Exception as e:
-        st.caption(f"Não foi possível calcular a taxa composta de crescimento: {e}")
+        st.caption(f"Não foi possível calcular o crescimento desde 2015: {e}")
             
 with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
@@ -684,6 +678,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
