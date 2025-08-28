@@ -580,15 +580,16 @@ with st.container(border=True):
         df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
         if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
             toplot = df_cat5.head(8).copy()
+            _altura = max(220, 28 * len(toplot))
             chart_cat = (
                 alt.Chart(toplot)
                 .mark_bar()
                 .encode(
-                    x=alt.X("CATEGORIA:N", title="CATEGORIA", sort="-y"),
-                    y=alt.Y("VALOR_TOTAL:Q", title="VALOR TOTAL"),
+                    x=alt.Y("CATEGORIA:N", title="CATEGORIA", sort="-x"),
+                    y=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
                     tooltip=["CATEGORIA", "VALOR_TOTAL"]
                 )
-                .properties(height=300)
+                .properties(height=_altura)
             )
             st.altair_chart(chart_cat, use_container_width=True)
             top = df_cat5.iloc[0]
@@ -602,15 +603,16 @@ with st.container(border=True):
         df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
         if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
             toplot = df_yoy.head(8).copy()
+            _altura = max(220, 28 * len(toplot))
             chart_yoy = (
                 alt.Chart(toplot)
                 .mark_bar()
                 .encode(
-                    x=alt.X("CATEGORIA:N", title="CATEGORIA", sort="-y"),
-                    y=alt.Y("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
+                    x=alt.Y("CATEGORIA:N", title="CATEGORIA", sort="-x"),
+                    y=alt.X("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
                     tooltip=["CATEGORIA", "MEDIA_YOY_PCT"]
                 )
-                .properties(height=300)
+                .properties(height=_altura)
             )
             st.altair_chart(chart_yoy, use_container_width=True)
             topg = df_yoy.iloc[0]
@@ -665,3 +667,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
