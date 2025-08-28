@@ -21,6 +21,7 @@ from Tratamento_Indicadores import (
     fornecedores_basicos_por_local_cadastro,
     menor_compra_item_unico,
     valor_medio_por_item,
+    itens_da_of,
 )
 
 from fornecedores_core import (
@@ -261,6 +262,31 @@ with st.container(border=True):
             )
         else:
             st.info("Sem dados para exibir.")
+        try:
+            if isinstance(df_max, pd.DataFrame) and not df_max.empty and "OF_CDG" in df_max.columns:
+                of_alvo = df_max.iloc[0]["OF_CDG"]
+                with st.expander("Ver itens da OF (Top 5)"):
+                    mostrar_todos = st.checkbox("Mostrar todos os itens", key="itens_maior_of_all", value=False)
+                    top_n = None if mostrar_todos else 5
+                    df_itens = itens_da_of(df, of_cdg=of_alvo, top_n=top_n)
+        
+                    if isinstance(df_itens, pd.DataFrame) and not df_itens.empty:
+                        st.dataframe(
+                            df_itens,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
+                                "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
+                                "QUANTIDADE":  st.column_config.NumberColumn("QTDE", format="%.2f"),
+                                "PRECO_UNIT":  st.column_config.NumberColumn("PREÇO UNIT.", format="%.2f"),
+                                "PRECO_TOTAL": st.column_config.NumberColumn("PREÇO TOTAL", format="%.2f"),
+                            },
+                        )
+                    else:
+                        st.caption("Sem itens para exibir.")
+        except Exception as e:
+            st.caption(f"Não consegui listar os itens da OF: {e}")
 
     with c2:
         st.markdown("**🧩 Menor OF**")
@@ -286,6 +312,32 @@ with st.container(border=True):
             )
         else:
             st.info("Sem dados para exibir.")
+        # Expander: itens da Menor OF
+        try:
+            if isinstance(df_min, pd.DataFrame) and not df_min.empty and "OF_CDG" in df_min.columns:
+                of_alvo = df_min.iloc[0]["OF_CDG"]
+                with st.expander("Ver itens da OF (Top 5)"):
+                    mostrar_todos = st.checkbox("Mostrar todos os itens", key="itens_menor_of_all", value=False)
+                    top_n = None if mostrar_todos else 5
+                    df_itens = itens_da_of(df, of_cdg=of_alvo, top_n=top_n)
+        
+                    if isinstance(df_itens, pd.DataFrame) and not df_itens.empty:
+                        st.dataframe(
+                            df_itens,
+                            use_container_width=True,
+                            hide_index=True,
+                            column_config={
+                                "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
+                                "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
+                                "QUANTIDADE":  st.column_config.NumberColumn("QTDE", format="%.2f"),
+                                "PRECO_UNIT":  st.column_config.NumberColumn("PREÇO UNIT.", format="%.2f"),
+                                "PRECO_TOTAL": st.column_config.NumberColumn("PREÇO TOTAL", format="%.2f"),
+                            },
+                        )
+                    else:
+                        st.caption("Sem itens para exibir.")
+        except Exception as e:
+            st.caption(f"Não consegui listar os itens da OF: {e}")
 
     with st.container(border=True):
         st.subheader("🧱 Maior compra de um item (única linha)")
@@ -506,3 +558,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
