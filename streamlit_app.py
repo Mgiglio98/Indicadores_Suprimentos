@@ -613,52 +613,33 @@ with st.container(border=True):
     else:
         st.info("Sem dados para exibir.")
 
-    # --- Maior crescimento: desde 2015 OU últimos 5 anos ---
+    # Maior crescimento desde 2015 (fixo 2015 → último ano, apenas categorias com vendas nos últimos 5 anos)
     try:
         col_cat_ref = "INSUMO_CATEGORIA_NORM" if "INSUMO_CATEGORIA_NORM" in df.columns else "INSUMO_CATEGORIA"
-    
-        # seletor do período (deixe "Desde 2015" como padrão se preferir)
-        modo_crescimento = st.segmented_control(
-            "Período do cálculo",
-            options=["Desde 2015", "Últimos 5 anos"],
-            selection="Desde 2015",
-            help="Alterne entre crescimento desde o início dos registros ou apenas nos últimos 5 anos."
-        )
-    
-        ano_fim = int(pd.to_datetime(df["OF_DATA"], errors="coerce").dt.year.max())
-        start_year = 2015 if modo_crescimento == "Desde 2015" else (ano_fim - 4)
-    
         res_g = categorias_crescimento_desde_2015(
             df,
-            start_year=start_year,
+            start_year=2015,
             col_cat=col_cat_ref,
             min_anos_validos=3,
             clip_pct=500.0,
-            require_continuous_last_n=5,  # garante venda em CADA um dos últimos 5 anos
+            require_continuous_last_n=5,   # <<< aqui está o filtro
         )
     
-        # opcional: excluir alguma categoria
         if isinstance(res_g, pd.DataFrame) and not res_g.empty:
+            # opcional: excluir categorias específicas
             res_g = res_g[res_g["CATEGORIA"].astype(str).str.upper() != "DESPESAS OPERACIONAIS"]
     
         if isinstance(res_g, pd.DataFrame) and not res_g.empty:
             topg = res_g.iloc[0]
-            if modo_crescimento == "Desde 2015":
-                st.caption(
-                    "Maior crescimento desde 2015 (apenas categorias com vendas em todos os últimos 5 anos): "
-                    f"**{topg['CATEGORIA']}** — {float(topg['CRESC_AA_%']):.2f}% a.a. "
-                    f"({int(topg['ANO_INICIO'])}→{int(topg['ANO_FIM'])}, método: {topg['METODO']})."
-                )
-            else:
-                st.caption(
-                    f"Maior crescimento (últimos 5 anos — {start_year}→{ano_fim}): "
-                    f"**{topg['CATEGORIA']}** — {float(topg['CRESC_AA_%']):.2f}% a.a. "
-                    f"(método: {topg['METODO']})."
-                )
+            st.caption(
+                "Maior crescimento desde 2015 (apenas categorias com vendas em todos os últimos 5 anos): "
+                f"**{topg['CATEGORIA']}** — {float(topg['CRESC_AA_%']):.2f}% a.a. "
+                f"({int(topg['ANO_INICIO'])}→{int(topg['ANO_FIM'])}, método: {topg['METODO']})."
+            )
         else:
-            st.caption("Nenhuma categoria atendeu aos critérios (venda contínua 5 anos + base suficiente).")
+            st.caption("Nenhuma categoria atende ao critério: vendas em TODOS os últimos 5 anos + base suficiente para cálculo.")
     except Exception as e:
-        st.caption(f"Não foi possível calcular o crescimento: {e}")
+        st.caption(f"Não foi possível calcular o crescimento desde 2015: {e}")
         
 with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
@@ -704,4 +685,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
