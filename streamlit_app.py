@@ -613,32 +613,30 @@ with st.container(border=True):
         st.info("Sem dados para exibir.")
 
     # Maior taxa de crescimento (CAGR desde o início dos registros)
+    # Maior taxa de crescimento (CAGR desde o início dos registros)
     try:
-        # usa diretamente o DF para evitar séries sem índice esperado
-        res_cagr = categorias_cagr_desde_inicio(df, min_prev=10_000)
-    
-        # se por algum motivo a função retornar com outro nome, normaliza
+        res_cagr = categorias_cagr_desde_inicio(df, min_prev=1_000, min_anos=2)  # ↓ mais permissivo
         if isinstance(res_cagr, pd.DataFrame) and not res_cagr.empty:
-            if "CATEGORIA" not in res_cagr.columns:
-                # fallback raro (ex.: versão antiga)
-                if "INSUMO_CATEGORIA" in res_cagr.columns:
-                    res_cagr = res_cagr.rename(columns={"INSUMO_CATEGORIA": "CATEGORIA"})
+            if "CATEGORIA" not in res_cagr.columns and "INSUMO_CATEGORIA" in res_cagr.columns:
+                res_cagr = res_cagr.rename(columns={"INSUMO_CATEGORIA": "CATEGORIA"})
+            if "CAGR_%" in res_cagr.columns:
+                res_cagr["CAGR_%"] = pd.to_numeric(res_cagr["CAGR_%"], errors="coerce")
+                res_cagr = res_cagr.dropna(subset=["CAGR_%"])
     
-        if isinstance(res_cagr, pd.DataFrame) and not res_cagr.empty and "CATEGORIA" in res_cagr.columns:
-            # opcional: excluir categorias que você não quer considerar
+            # opcional: excluir categorias específicas
             res_cagr = res_cagr[res_cagr["CATEGORIA"].astype(str).str.upper() != "DESPESAS OPERACIONAIS"]
     
             if not res_cagr.empty:
-                top = res_cagr.sort_values("CAGR_%", ascending=False).iloc[0]
+                top = res_cagr.iloc[0]
                 st.caption(
                     "Maior taxa de crescimento desde o início (CAGR): "
                     f"**{top['CATEGORIA']}** — {float(top['CAGR_%']):.2f}% a.a. "
                     f"({int(top['ANO_INICIO'])}→{int(top['ANO_FIM'])})."
                 )
             else:
-                st.caption("Não há categorias elegíveis para CAGR após os filtros (ex.: base mínima ou exclusões).")
+                st.caption("Não há categorias elegíveis para CAGR após os filtros (ex.: base mínima, anos insuficientes).")
         else:
-            st.caption("Não foi possível calcular o CAGR: resultado vazio ou sem coluna 'CATEGORIA'.")
+            st.caption("Não foi possível calcular o CAGR: resultado vazio.")
     except Exception as e:
         st.caption(f"Não foi possível calcular a taxa composta de crescimento: {e}")
             
@@ -686,6 +684,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
