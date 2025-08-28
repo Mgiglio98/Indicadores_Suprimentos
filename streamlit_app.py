@@ -19,6 +19,8 @@ from Tratamento_Indicadores import (
     categorias_crescimento_yoy,
     categorias_basicos_distintos,
     fornecedores_basicos_por_local_cadastro,
+    menor_compra_item_unico,
+    valor_medio_por_item,
 )
 
 from fornecedores_core import (
@@ -92,7 +94,7 @@ df = df_erp.copy()
 # ---------- KPIs ----------
 with st.container(border=True):
     st.subheader("📊 Resumo")
-    k1, k2, k3, k4, k5 = st.columns(5)
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
 
     # Valor médio por OF
     vm = _safe(valor_medio_por_of, df)
@@ -124,6 +126,15 @@ with st.container(border=True):
         k5.metric("Cadastrados no último ano", f"{cad_no_ano}")
     except Exception:
         pass
+
+    # Ticket médio por ITEM (linha)
+    try:
+        vm_item = _safe(valor_medio_por_item, df)
+        media_item = vm_item[0] if vm_item and isinstance(vm_item, tuple) else 0
+        k6.metric("Ticket médio por ITEM", _format_brl(round(media_item, 2)))
+    except Exception:
+        k6.metric("Ticket médio por ITEM", "—")
+
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
     st.subheader("🥇 TOP fornecedores por UF")
@@ -216,6 +227,24 @@ with st.container(border=True):
         if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
             st.dataframe(
                 df_itemmax,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
+                    "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
+                    "QUANTIDADE":  st.column_config.NumberColumn("QTDE", format="%.2f"),
+                    "PRECO_TOTAL": st.column_config.NumberColumn("PREÇO TOTAL", format="%.2f"),
+                },
+            )
+        else:
+            st.info("Sem dados para exibir.")
+
+    with st.container(border=True):
+        st.subheader("🧱 Menor compra de um item (única linha)")
+        df_itemmin = _safe(menor_compra_item_unico, df)
+        if isinstance(df_itemmin, pd.DataFrame) and not df_itemmin.empty:
+            st.dataframe(
+                df_itemmin,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
@@ -394,6 +423,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
