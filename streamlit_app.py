@@ -573,104 +573,79 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("📦 Categorias de materiais")
 
-    c1, c2 = st.columns(2)
+    # --- Mais compradas (últimos 5 anos) — gráfico único, largura total ---
+    st.markdown("**Mais compradas (últimos 5 anos)**")
+    df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
+    if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
+        df_cat5 = df_cat5.copy()
+        df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
 
-    # Top categorias (últimos 5 anos)
-    with c1:
-        st.markdown("**Mais compradas (últimos 5 anos)**")
-        df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
-        if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
-            # ordena desc e limita a 8
-            df_cat5 = df_cat5.copy()
-            df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
-            toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
-            
-            # altura mais confortável por categoria
-            _altura = max(320, 36 * len(toplot))
-            
-            chart_cat = (
-                alt.Chart(toplot)
-                .mark_bar()
-                .encode(
-                    y=alt.Y(
-                        "CATEGORIA:N",
-                        title="CATEGORIA",
-                        sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
-                        axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6)  # <<< nomes completos
-                    ),
-                    x=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
-                    tooltip=["CATEGORIA", "VALOR_TOTAL"]
-                )
-                .properties(height=_altura)
-            )
-            st.altair_chart(chart_cat, use_container_width=True)
-    
-            # caption do Top considerando o dataframe já ordenado
-            top = toplot.iloc[0]
-            st.caption(
-                f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({_format_pct_br(top['PART_%'])})"
-            )
-        else:
-            st.info("Sem dados para exibir.")
+        # ordena do maior para o menor e limita (ajuste o .head(N) se quiser mostrar mais/menos)
+        toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
 
-    # Maior crescimento YoY (média) por categoria (últimos 5 anos)
-    with c2:
-        st.markdown("**Maior crescimento YoY (média, últimos 5 anos)**")
-    
-        # Série YoY por categoria (ano a ano)
-        df_yoy_series = _safe(categorias_yoy_series, df, anos=5)
-    
-        if isinstance(df_yoy_series, pd.DataFrame) and not df_yoy_series.empty:
-            s = df_yoy_series.copy()
-    
-            # Exclui "DESPESAS OPERACIONAIS"
+        # altura maior para caber rótulos completos
+        _altura = max(360, 36 * len(toplot))
+        chart_cat = (
+            alt.Chart(toplot)
+            .mark_bar()
+            .encode(
+                y=alt.Y(
+                    "CATEGORIA:N",
+                    title="CATEGORIA",
+                    sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
+                    axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),  # nomes completos
+                ),
+                x=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
+                tooltip=["CATEGORIA", "VALOR_TOTAL", "PART_%"],
+            )
+            .properties(height=_altura)
+        )
+        st.altair_chart(chart_cat, use_container_width=True)
+
+        # caption do Top
+        top = toplot.iloc[0]
+        st.caption(
+            f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({float(top['PART_%']):.2f}%)"
+        )
+    else:
+        st.info("Sem dados para exibir.")
+
+    # --- Frase: categoria que mais apresenta crescimento nos últimos anos ---
+    # preferimos a série robusta; se não existir, caímos no resumo médio YoY
+    cat_text = None
+    try:
+        s = categorias_yoy_series(df, anos=5, min_prev=10_000, clip=(-200, 200))
+        if isinstance(s, pd.DataFrame) and not s.empty:
+            # exclui "DESPESAS OPERACIONAIS", se existir
             if "CATEGORIA" in s.columns:
                 s = s[s["CATEGORIA"].astype("string").str.strip().str.upper() != "DESPESAS OPERACIONAIS"]
-    
-            if s.empty:
-                st.info("Sem dados para exibir.")
-            else:
-                # Top-5 categorias por crescimento médio no período
-                base_rank = s.dropna(subset=["YOY_PCT"])
-                rank = (
-                    base_rank.groupby("CATEGORIA")["YOY_PCT"]
-                    .mean()                           
-                    .sort_values(ascending=False)
-                    .head(5)
-                    .index.tolist()
+            s = s.dropna(subset=["YOY_PCT"])
+            if not s.empty:
+                # ranking por mediana do YoY (mais robusto)
+                rank_med = s.groupby("CATEGORIA")["YOY_PCT"].median().sort_values(ascending=False)
+                cat_top = rank_med.index[0]
+                med_yoy = float(rank_med.iloc[0])
+                cat_text = f"Categoria com maior crescimento (mediana YoY, últimos 5 anos): **{cat_top}** — {med_yoy:.2f}%."
+    except Exception:
+        pass
+
+    if cat_text is None:
+        # fallback pelo resumo da média YoY
+        df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
+        if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
+            tmp = df_yoy.copy()
+            tmp = tmp[tmp["CATEGORIA"].astype("string").str.strip().str.upper() != "DESPESAS OPERACIONAIS"]
+            tmp["MEDIA_YOY_PCT"] = pd.to_numeric(tmp["MEDIA_YOY_PCT"], errors="coerce")
+            tmp = tmp.dropna(subset=["MEDIA_YOY_PCT"])
+            if not tmp.empty:
+                topg = tmp.sort_values("MEDIA_YOY_PCT", ascending=False).iloc[0]
+                cat_text = (
+                    f"Categoria com maior crescimento (média YoY, últimos 5 anos): "
+                    f"**{topg['CATEGORIA']}** — {float(topg['MEDIA_YOY_PCT']):.2f}%."
                 )
-                
-                if not rank:
-                    st.info("Sem dados suficientes para calcular o crescimento YoY.")
-                    st.stop()
-                s = s[s["CATEGORIA"].isin(rank)].copy()
-    
-                # Eixo X legível (anos sem pontuação) + tooltip amigável
-                s["ANO_TXT"] = s["ANO"].astype(str)
-                s["YOY_TXT"] = s["YOY_PCT"].map(_format_pct_br)
-    
-                import altair as alt
-                chart = (
-                    alt.Chart(s)
-                    .mark_line(point=True)
-                    .encode(
-                        x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),
-                        y=alt.Y("YOY_PCT:Q", title="YoY (%)"),
-                        color=alt.Color("CATEGORIA:N", legend=alt.Legend(title="Categoria")),
-                        tooltip=[
-                            alt.Tooltip("CATEGORIA:N", title="Categoria"),
-                            alt.Tooltip("ANO_TXT:N",  title="Ano"),
-                            alt.Tooltip("YOY_PCT:Q",  title="YoY (%)", format=".2f"),
-                        ],
-                    )
-                    .properties(height=360)
-                )
-                st.altair_chart(chart, use_container_width=True)
-    
-                # Caption: lista rápida das 5 categorias selecionadas (ordenadas por média YoY)
-                st.caption("Top-5 por crescimento médio: " + " • ".join(rank))
-        else:
-            st.info("Sem dados para exibir.")
+
+    if cat_text:
+        st.caption(cat_text)
             
 with st.container(border=True):
     st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
@@ -716,6 +691,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
