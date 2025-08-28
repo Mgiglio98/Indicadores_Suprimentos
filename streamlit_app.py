@@ -579,15 +579,14 @@ with st.container(border=True):
         st.markdown("**Mais compradas (últimos 5 anos)**")
         df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
         if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
-            # ordena do maior para o menor e limita a 8 categorias
+            # ordena desc e limita a 8
             df_cat5 = df_cat5.copy()
             df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
             toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
-    
-            # altura adaptativa para caber rótulos longos
-            _altura = max(240, 28 * len(toplot))
-    
-            # barras horizontais (categoria no eixo Y, valor no X) + ordem desc
+            
+            # altura mais confortável por categoria
+            _altura = max(320, 36 * len(toplot))
+            
             chart_cat = (
                 alt.Chart(toplot)
                 .mark_bar()
@@ -596,9 +595,10 @@ with st.container(border=True):
                         "CATEGORIA:N",
                         title="CATEGORIA",
                         sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
+                        axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6)  # <<< nomes completos
                     ),
                     x=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
-                    tooltip=["CATEGORIA", "VALOR_TOTAL"],
+                    tooltip=["CATEGORIA", "VALOR_TOTAL"]
                 )
                 .properties(height=_altura)
             )
@@ -618,16 +618,15 @@ with st.container(border=True):
         df_yoy = _safe(categorias_crescimento_yoy, df, anos=5)
         if isinstance(df_yoy, pd.DataFrame) and not df_yoy.empty:
             df_yoy = df_yoy.copy()
-            # garante numérico
             for c in ["MEDIA_YOY_PCT", "ULTIMO_YOY_PCT"]:
                 if c in df_yoy.columns:
                     df_yoy[c] = pd.to_numeric(df_yoy[c], errors="coerce")
-    
-            # ordena desc e limita a 8
+            
             toplot = df_yoy.sort_values("MEDIA_YOY_PCT", ascending=False).head(8)
-    
-            # barras horizontais + altura adaptativa
-            _altura = max(240, 28 * len(toplot))
+            
+            # altura mais confortável por categoria
+            _altura = max(320, 36 * len(toplot))
+            
             chart_yoy = (
                 alt.Chart(toplot)
                 .mark_bar()
@@ -636,9 +635,10 @@ with st.container(border=True):
                         "CATEGORIA:N",
                         title="CATEGORIA",
                         sort=alt.SortField(field="MEDIA_YOY_PCT", order="descending"),
+                        axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6)  # <<< nomes completos
                     ),
                     x=alt.X("MEDIA_YOY_PCT:Q", title="MÉDIA YoY (%)"),
-                    tooltip=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"],
+                    tooltip=["CATEGORIA", "MEDIA_YOY_PCT", "ULTIMO_YOY_PCT", "PRIMEIRO_ANO", "ULTIMO_ANO"]
                 )
                 .properties(height=_altura)
             )
@@ -698,5 +698,6 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
