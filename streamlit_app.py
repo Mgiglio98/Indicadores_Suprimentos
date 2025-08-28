@@ -21,12 +21,13 @@ from Tratamento_Indicadores import (
     quantidade_empresas_que_venderam_ultimos_3_anos,
     meses_top3_volume_geral,
     maior_compra_item_unico,
+    menor_compra_item_unico,
+    valor_medio_por_item,
     categorias_mais_compradas_ultimos_anos,
     categorias_basicos_distintos,
     fornecedores_basicos_por_local_cadastro,
-    menor_compra_item_unico,
-    valor_medio_por_item,
     itens_da_of,
+    categorias_com_venda_continua_ultimos_anos,
     categorias_crescimento_desde_2015,
 )
 
@@ -647,3 +648,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
