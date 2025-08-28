@@ -72,6 +72,56 @@ def _format_int_br(n) -> str:
     except Exception:
         return "0"
 
+def _format_pct_br(x) -> str:
+    try:
+        return f"{float(x):.2f}%".replace(".", ",")
+    except Exception:
+        return "0,00%"
+
+def _fmt_df_brl(df: pd.DataFrame,
+                money: list[str] | None = None,
+                ints: list[str] | None = None,
+                pcts: list[str] | None = None,
+                decimals: list[str] | None = None) -> pd.DataFrame:
+    """
+    Converte colunas numéricas para strings PT-BR:
+      - money:    "R$ 1.234,56"
+      - ints:     "1.234"
+      - pcts:     "12,34%"
+      - decimals: "1.234,56" (sem "R$")
+    Obs.: usar APENAS em tabelas (st.dataframe). Para gráficos, manter numérico.
+    """
+    out = df.copy()
+
+    # Moeda
+    if money:
+        for c in money:
+            if c in out.columns:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(lambda v: _format_brl(v) if pd.notna(v) else "—")
+
+    # Inteiros
+    if ints:
+        for c in ints:
+            if c in out.columns:
+                s = pd.to_numeric(out[c], errors="coerce").fillna(0)
+                out[c] = s.astype(int).map(lambda n: f"{n:,}".replace(",", "."))
+
+    # Percentuais
+    if pcts:
+        for c in pcts:
+            if c in out.columns:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(lambda v: _format_pct_br(v) if pd.notna(v) else "—")
+
+    # Decimais gerais
+    if decimals:
+        for c in decimals:
+            if c in out.columns:
+                out[c] = pd.to_numeric(out[c], errors="coerce").map(
+                    lambda v: f"{v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".") if pd.notna(v) else "—"
+                )
+
+    return out
+
 def _fill_last_n_years(df: pd.DataFrame, year_col: str = "ANO", y_col: str = "FORNECEDORES_ATIVOS", n: int = 10) -> pd.DataFrame:
     anos = list(range(pd.Timestamp.today().year - n + 1, pd.Timestamp.today().year + 1))
     base = pd.DataFrame({year_col: anos})
@@ -104,7 +154,7 @@ with st.container(border=True):
     # % OFs básicas (último ano)
     pct_grp = _safe(percentual_ofs_basicas_ultimo_ano, df)
     pct = pct_grp[0] if pct_grp and isinstance(pct_grp, tuple) else 0.0
-    k2.metric("% de OFs BÁSICAS (último ano)", f"{pct:.2f}%")
+    k2.metric("% de OFs BÁSICAS (último ano)", _format_pct_br(pct))
 
     # Fornecedores cadastrados (base de cadastro)
     try:
@@ -146,13 +196,15 @@ with st.container(border=True):
         if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
             if "FORNECEDOR_CDG" in df_top10.columns:
                 df_top10["FORNECEDOR_CDG"] = df_top10["FORNECEDOR_CDG"].astype("string")
-            df_top10 = _round_cols(df_top10, ["VALOR"])
+            df_top10 = _round_cols(df_top10, ["VALOR"])  # mantém numérico p/ uso futuro
+            df_top10_fmt = _fmt_df_brl(df_top10, money=["VALOR"])
+        
             st.dataframe(
-                df_top10,
+                df_top10_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                    "VALOR": st.column_config.TextColumn("VALOR"),
                     "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
                 },
             )
@@ -166,12 +218,14 @@ with st.container(border=True):
             if "FORNECEDOR_CDG" in df_top2.columns:
                 df_top2["FORNECEDOR_CDG"] = df_top2["FORNECEDOR_CDG"].astype("string")
             df_top2 = _round_cols(df_top2, ["VALOR"])
+            df_top2_fmt = _fmt_df_brl(df_top2, money=["VALOR"])
+        
             st.dataframe(
-                df_top2,
+                df_top2_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR": st.column_config.NumberColumn("VALOR", format="%.2f"),
+                    "VALOR": st.column_config.TextColumn("VALOR"),
                     "FORNECEDOR_CDG": st.column_config.TextColumn("FORNECEDOR_CDG"),
                 },
             )
@@ -188,15 +242,21 @@ with st.container(border=True):
         df_max = _safe(maior_ordem_fornecimento, df)
         if isinstance(df_max, pd.DataFrame) and not df_max.empty:
             df_max = _round_cols(df_max, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
-            st.dataframe(
+            df_max_fmt = _fmt_df_brl(
                 df_max,
+                money=["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"],
+                ints=["TOTAL_ITENS"] if "TOTAL_ITENS" in df_max.columns else None
+            )
+            st.dataframe(
+                df_max_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
-                    "PRCTTL_INSUMO": st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
-                    "TOTAL": st.column_config.NumberColumn("TOTAL", format="%.2f"),
+                    "VALOR_TOTAL":     st.column_config.TextColumn("VALOR_TOTAL"),
+                    "ITEM_PRCUNTPED":  st.column_config.TextColumn("ITEM_PRCUNTPED"),
+                    "PRCTTL_INSUMO":   st.column_config.TextColumn("PRCTTL_INSUMO"),
+                    "TOTAL":           st.column_config.TextColumn("TOTAL"),
+                    "TOTAL_ITENS":     st.column_config.TextColumn("TOTAL_ITENS") if "TOTAL_ITENS" in df_max.columns else None,
                 },
             )
         else:
@@ -207,15 +267,21 @@ with st.container(border=True):
         df_min = _safe(menor_ordem_fornecimento, df)
         if isinstance(df_min, pd.DataFrame) and not df_min.empty:
             df_min = _round_cols(df_min, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
-            st.dataframe(
+            df_min_fmt = _fmt_df_brl(
                 df_min,
+                money=["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"],
+                ints=["TOTAL_ITENS"] if "TOTAL_ITENS" in df_min.columns else None
+            )
+            st.dataframe(
+                df_min_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "ITEM_PRCUNTPED": st.column_config.NumberColumn("ITEM_PRCUNTPED", format="%.2f"),
-                    "PRCTTL_INSUMO": st.column_config.NumberColumn("PRCTTL_INSUMO", format="%.2f"),
-                    "TOTAL": st.column_config.NumberColumn("TOTAL", format="%.2f"),
+                    "VALOR_TOTAL":     st.column_config.TextColumn("VALOR_TOTAL"),
+                    "ITEM_PRCUNTPED":  st.column_config.TextColumn("ITEM_PRCUNTPED"),
+                    "PRCTTL_INSUMO":   st.column_config.TextColumn("PRCTTL_INSUMO"),
+                    "TOTAL":           st.column_config.TextColumn("TOTAL"),
+                    "TOTAL_ITENS":     st.column_config.TextColumn("TOTAL_ITENS") if "TOTAL_ITENS" in df_min.columns else None,
                 },
             )
         else:
@@ -225,15 +291,20 @@ with st.container(border=True):
         st.subheader("🧱 Maior compra de um item (única linha)")
         df_itemmax = _safe(maior_compra_item_unico, df)
         if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
-            st.dataframe(
+            df_itemmax_fmt = _fmt_df_brl(
                 df_itemmax,
+                money=["PRECO_TOTAL"],
+                decimals=["QUANTIDADE"]
+            )
+            st.dataframe(
+                df_itemmax_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
                     "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
                     "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
-                    "QUANTIDADE":  st.column_config.NumberColumn("QTDE", format="%.2f"),
-                    "PRECO_TOTAL": st.column_config.NumberColumn("PREÇO TOTAL", format="%.2f"),
+                    "QUANTIDADE":  st.column_config.TextColumn("QTDE"),
+                    "PRECO_TOTAL": st.column_config.TextColumn("PREÇO TOTAL"),
                 },
             )
         else:
@@ -243,19 +314,25 @@ with st.container(border=True):
         st.subheader("🧱 Menor compra de um item (única linha)")
         df_itemmin = _safe(menor_compra_item_unico, df)
         if isinstance(df_itemmin, pd.DataFrame) and not df_itemmin.empty:
-            st.dataframe(
+            df_itemmin_fmt = _fmt_df_brl(
                 df_itemmin,
+                money=["PRECO_TOTAL"],
+                decimals=["QUANTIDADE"]
+            )
+            st.dataframe(
+                df_itemmin_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
                     "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
                     "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
-                    "QUANTIDADE":  st.column_config.NumberColumn("QTDE", format="%.2f"),
-                    "PRECO_TOTAL": st.column_config.NumberColumn("PREÇO TOTAL", format="%.2f"),
+                    "QUANTIDADE":  st.column_config.TextColumn("QTDE"),
+                    "PRECO_TOTAL": st.column_config.TextColumn("PREÇO TOTAL"),
                 },
             )
         else:
             st.info("Sem dados para exibir.")
+
 
 # ---------- Volumes por período ----------
 with st.container(border=True):
@@ -269,32 +346,36 @@ with st.container(border=True):
         df_mes_12 = _safe(mes_maior_volume_ultimo_ano, df, top_n=3)
         if isinstance(df_mes_12, pd.DataFrame) and not df_mes_12.empty:
             df_mes_12 = _round_cols(df_mes_12, ["VALOR_TOTAL", "PART_%"])
+            df_mes_12["ANO_MES"] = df_mes_12["ANO_MES"].astype(str)
+            df_mes_12_fmt = _fmt_df_brl(df_mes_12, money=["VALOR_TOTAL"], pcts=["PART_%"])
             st.dataframe(
-                df_mes_12,
+                df_mes_12_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
+                    "ANO_MES":     st.column_config.TextColumn("ANO/MÊS"),
+                    "VALOR_TOTAL": st.column_config.TextColumn("VALOR_TOTAL"),
+                    "PART_%":      st.column_config.TextColumn("PART_%"),
                 },
             )
         else:
             st.info("Sem dados para exibir.")
-
+            
     # Top 3 meses (geral, agregando todos os anos por mês-do-ano)
     with c2:
         st.markdown("**Top 3 meses (geral)**")
         df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3)
         if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
             df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
+            df_mes_all_fmt = _fmt_df_brl(df_mes_all, money=["VALOR_TOTAL"], pcts=["PART_%"])
             st.dataframe(
-                df_mes_all,
+                df_mes_all_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
                     "MES_ROTULO":  st.column_config.TextColumn("MÊS"),
-                    "VALOR_TOTAL": st.column_config.NumberColumn("VALOR_TOTAL", format="%.2f"),
-                    "PART_%":      st.column_config.NumberColumn("PART_%",      format="%.2f"),
+                    "VALOR_TOTAL": st.column_config.TextColumn("VALOR_TOTAL"),
+                    "PART_%":      st.column_config.TextColumn("PART_%"),
                 },
             )
         else:
@@ -405,10 +486,12 @@ with st.container(border=True):
         k3.metric("SC — fornecedores básicos (cad.)", _fmt(sc))
 
         with st.expander("Ver detalhes"):
+            df_tbl = df_res[["LOCAL","FORNECEDORES_BÁSICO_CAD"]].sort_values("LOCAL")
+            df_tbl_fmt = _fmt_df_brl(df_tbl, ints=["FORNECEDORES_BÁSICO_CAD"])
             st.dataframe(
-                df_res[["LOCAL","FORNECEDORES_BÁSICO_CAD"]].sort_values("LOCAL"),
+                df_tbl_fmt,
                 use_container_width=True, hide_index=True,
-                column_config={"FORNECEDORES_BÁSICO_CAD": st.column_config.NumberColumn(format="%.0f")}
+                column_config={"FORNECEDORES_BÁSICO_CAD": st.column_config.TextColumn("FORNECEDORES_BÁSICO_CAD")}
             )
     else:
         st.info("Sem dados para compor os contadores por local.")
@@ -423,9 +506,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
-
-
-
-
-
