@@ -614,13 +614,31 @@ with st.container(border=True):
 
     # Maior taxa de crescimento (CAGR desde o início dos registros)
     try:
-        top_cagr = categoria_top_cagr(df, min_prev=10_000)
-        if top_cagr is not None:
-            st.caption(
-                "Maior taxa de crescimento desde o início (CAGR): "
-                f"**{top_cagr['CATEGORIAS']}** — {top_cagr['CAGR_%']:.2f}% a.a. "
-                f"({int(top_cagr['ANO_INICIO'])}→{int(top_cagr['ANO_FIM'])})."
-            )
+        # usa diretamente o DF para evitar séries sem índice esperado
+        res_cagr = categorias_cagr_desde_inicio(df, min_prev=10_000)
+    
+        # se por algum motivo a função retornar com outro nome, normaliza
+        if isinstance(res_cagr, pd.DataFrame) and not res_cagr.empty:
+            if "CATEGORIA" not in res_cagr.columns:
+                # fallback raro (ex.: versão antiga)
+                if "INSUMO_CATEGORIA" in res_cagr.columns:
+                    res_cagr = res_cagr.rename(columns={"INSUMO_CATEGORIA": "CATEGORIA"})
+    
+        if isinstance(res_cagr, pd.DataFrame) and not res_cagr.empty and "CATEGORIA" in res_cagr.columns:
+            # opcional: excluir categorias que você não quer considerar
+            res_cagr = res_cagr[res_cagr["CATEGORIA"].astype(str).str.upper() != "DESPESAS OPERACIONAIS"]
+    
+            if not res_cagr.empty:
+                top = res_cagr.sort_values("CAGR_%", ascending=False).iloc[0]
+                st.caption(
+                    "Maior taxa de crescimento desde o início (CAGR): "
+                    f"**{top['CATEGORIA']}** — {float(top['CAGR_%']):.2f}% a.a. "
+                    f"({int(top['ANO_INICIO'])}→{int(top['ANO_FIM'])})."
+                )
+            else:
+                st.caption("Não há categorias elegíveis para CAGR após os filtros (ex.: base mínima ou exclusões).")
+        else:
+            st.caption("Não foi possível calcular o CAGR: resultado vazio ou sem coluna 'CATEGORIA'.")
     except Exception as e:
         st.caption(f"Não foi possível calcular a taxa composta de crescimento: {e}")
             
@@ -668,6 +686,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
