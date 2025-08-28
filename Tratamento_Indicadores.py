@@ -891,3 +891,152 @@ def categorias_crescimento_desde_2015(
     if res.empty:
         return res
     return res.sort_values("CRESC_AA_%", ascending=False).reset_index(drop=True)
+
+def categorias_com_venda_continua_ultimos_anos(
+    df,
+    anos: int = 5,
+    col_cat: str = "INSUMO_CATEGORIA",
+    col_data: str = "OF_DATA",
+    col_val: str = "PRCTTL_INSUMO",
+):
+    """
+    Retorna um set com as categorias que têm venda (>0) em CADA um dos últimos `anos`.
+    A janela é [ultimo_ano - anos + 1 .. ultimo_ano], onde ultimo_ano é o maior ano presente na base.
+    """
+    import pandas as pd
+
+    base = df.copy()
+    base[col_data] = pd.to_datetime(base[col_data], errors="coerce")
+    base[col_val]  = pd.to_numeric(base[col_val], errors="coerce")
+    base = base.dropna(subset=[col_data, col_val])
+
+    if col_cat not in base.columns or base.empty:
+        return set()
+
+    base["ANO"] = base[col_data].dt.year
+    ultimo_ano = int(base["ANO"].max())
+    janela = list(range(ultimo_ano - anos + 1, ultimo_ano + 1))
+
+    anuais = (
+        base.groupby([col_cat, "ANO"])[col_val]
+            .sum()
+            .reset_index(name="VALOR_ANO")
+    )
+
+    # pivot -> garante todas as colunas (anos) e preenche ausentes com 0
+    wide = (anuais.pivot(index=col_cat, columns="ANO", values="VALOR_ANO")
+                  .reindex(columns=janela)
+                  .fillna(0))
+
+    mask = (wide > 0).all(axis=1)
+    return set(wide.index[mask])
+
+def categorias_crescimento_desde_2015(
+    df,
+    start_year: int = 2015,
+    col_cat: str = "INSUMO_CATEGORIA",
+    col_data: str = "OF_DATA",
+    col_val: str = "PRCTTL_INSUMO",
+    min_anos_validos: int = 3,
+    clip_pct: float | None = 500.0,
+    require_continuous_last_n: int | None = None,  # <<< novo
+) -> pd.DataFrame:
+    """
+    Taxa anual de crescimento por categoria no período fixo start_year → último ano do dataset.
+    - Se require_continuous_last_n for definido, mantém apenas categorias com venda (>0)
+      em CADA um dos últimos N anos.
+    Retorna: CATEGORIA | ANO_INICIO | ANO_FIM | VALOR_INICIO | VALOR_FIM | ANOS | METODO | CRESC_AA_%
+    """
+    import pandas as pd, numpy as np
+
+    base = df.copy()
+    if col_cat not in base.columns:
+        return pd.DataFrame(columns=[
+            "CATEGORIA","ANO_INICIO","ANO_FIM","VALOR_INICIO","VALOR_FIM","ANOS","METODO","CRESC_AA_%"
+        ])
+
+    base[col_data] = pd.to_datetime(base[col_data], errors="coerce")
+    base[col_val]  = pd.to_numeric(base[col_val], errors="coerce")
+    base = base.dropna(subset=[col_data, col_val])
+    base["ANO"] = base[col_data].dt.year
+
+    anuais = (base.groupby([col_cat, "ANO"])[col_val]
+                 .sum()
+                 .reset_index(name="VALOR_ANO"))
+
+    # >>> filtro: apenas categorias com venda contínua nos últimos N anos
+    if require_continuous_last_n and require_continuous_last_n > 0:
+        cats_ok = categorias_com_venda_continua_ultimos_anos(
+            df=base,
+            anos=require_continuous_last_n,
+            col_cat=col_cat,
+            col_data=col_data,
+            col_val=col_val,
+        )
+        if not cats_ok:
+            return pd.DataFrame(columns=[
+                "CATEGORIA","ANO_INICIO","ANO_FIM","VALOR_INICIO","VALOR_FIM","ANOS","METODO","CRESC_AA_%"
+            ])
+        anuais = anuais[anuais[col_cat].isin(cats_ok)]
+
+    ano_max_global = int(anuais["ANO"].max()) if not anuais.empty else start_year
+    out = []
+
+    for cat, g in anuais.groupby(col_cat):
+        g = g.sort_values("ANO")
+        if g["ANO"].max() < start_year:
+            continue
+
+        anos_range = list(range(int(start_year), int(ano_max_global) + 1))
+        full = (pd.DataFrame({"ANO": anos_range})
+                .merge(g[["ANO","VALOR_ANO"]], on="ANO", how="left")
+                .fillna(0)
+                .sort_values("ANO"))
+
+        anos_pos = full[full["VALOR_ANO"] > 0]
+        if anos_pos["ANO"].nunique() < int(min_anos_validos):
+            continue
+
+        y0 = int(start_year)
+        y1 = int(ano_max_global)
+        v0 = float(full.loc[full["ANO"] == y0, "VALOR_ANO"].iloc[0])
+        v1 = float(full.loc[full["ANO"] == y1, "VALOR_ANO"].iloc[0])
+        anos = y1 - y0
+        if anos <= 0:
+            continue
+
+        if v0 > 0:
+            if v1 > 0:
+                cresc = (v1 / v0) ** (1.0 / anos) - 1.0
+            else:
+                cresc = -1.0
+            metodo = "CAGR"
+        else:
+            sub = full[full["VALOR_ANO"] > 0].copy()
+            if sub["ANO"].nunique() >= int(min_anos_validos):
+                x = sub["ANO"].astype(float).values
+                y = np.log(sub["VALOR_ANO"].astype(float).values)
+                slope, _ = np.polyfit(x, y, 1)
+                cresc = np.exp(slope) - 1.0
+                metodo = "LOGTREND"
+            else:
+                continue
+
+        if clip_pct is not None:
+            cresc = float(np.clip(cresc, -clip_pct/100.0, clip_pct/100.0))
+
+        out.append({
+            "CATEGORIA": cat,
+            "ANO_INICIO": y0,
+            "ANO_FIM": y1,
+            "VALOR_INICIO": round(v0, 2),
+            "VALOR_FIM": round(v1, 2),
+            "ANOS": anos,
+            "METODO": metodo,
+            "CRESC_AA_%": round(cresc * 100.0, 2),
+        })
+
+    res = pd.DataFrame(out)
+    if res.empty:
+        return res
+    return res.sort_values("CRESC_AA_%", ascending=False).reset_index(drop=True)
