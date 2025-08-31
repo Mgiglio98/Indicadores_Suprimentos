@@ -284,7 +284,7 @@ with st.container(border=True):
 
 # ---------- OFs destaque ----------
 with st.container(border=True):
-    st.subheader("📎 OFs destaque")
+    st.subheader("📎 Principais Vendas")
     c1, c2 = st.columns(2)
 
     with c1:
@@ -388,8 +388,8 @@ with st.container(border=True):
         except Exception as e:
             st.caption(f"Não consegui listar os itens da OF: {e}")
 
-    with st.container(border=True):
-        st.subheader("🧱 Maior compra de um item (única linha)")
+    with st.container(border=False):
+        st.subheader("🧱 Maior compra de um item")
         df_itemmax = _safe(maior_compra_item_unico, df)
         if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
             df_itemmax_fmt = _fmt_df_brl(
@@ -411,8 +411,8 @@ with st.container(border=True):
         else:
             st.info("Sem dados para exibir.")
 
-    with st.container(border=True):
-        st.subheader("🧱 Menor compra de um item (única linha)")
+    with st.container(border=False):
+        st.subheader("🧱 Menor compra de um item")
         df_itemmin = _safe(menor_compra_item_unico, df)
         if isinstance(df_itemmin, pd.DataFrame) and not df_itemmin.empty:
             df_itemmin_fmt = _fmt_df_brl(
@@ -433,7 +433,6 @@ with st.container(border=True):
             )
         else:
             st.info("Sem dados para exibir.")
-
 
 # ---------- Volumes por período ----------
 with st.container(border=True):
@@ -463,7 +462,7 @@ with st.container(border=True):
             
     # Top 3 meses (geral, agregando todos os anos por mês-do-ano)
     with c2:
-        st.markdown("**Top 3 meses (geral)**")
+        st.markdown("**Top 3 meses (últimos 10 anos)**")
         df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3)
         if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
             df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
@@ -537,7 +536,7 @@ with st.container(border=True):
 
 # ---------- Série de Categorias ----------
 with st.container(border=True):
-    st.subheader("📦 Categorias de materiais")
+    st.subheader("📦 Volume por Categoria")
 
     # --- Mais compradas (últimos 5 anos) — gráfico único, largura total ---
     st.markdown("**Mais compradas (últimos 5 anos)**")
@@ -585,7 +584,7 @@ with st.container(border=True):
             col_cat=col_cat_ref,
             min_anos_validos=3,
             clip_pct=500.0,
-            require_continuous_last_n=5,   # <<< aqui está o filtro
+            require_continuous_last_n=5,
         )
     
         if isinstance(res_g, pd.DataFrame) and not res_g.empty:
@@ -605,10 +604,10 @@ with st.container(border=True):
         st.caption(f"Não foi possível calcular o crescimento desde 2015: {e}")
         
 with st.container(border=True):
-    st.subheader("🧱 Materiais BÁSICOS — cobertura de cadastro por local")
+    st.subheader("🧱 Materiais Básicos — Fornecimento por local")
 
     # 1) Categorias dos básicos observadas no ERP
-    with st.expander("Categorias dos materiais básicos (observadas no ERP)"):
+    with st.expander("Categorias dos materiais básicos"):
         df_cats = categorias_basicos_distintos(df)
         if isinstance(df_cats, pd.DataFrame) and not df_cats.empty:
             st.dataframe(df_cats, use_container_width=True, hide_index=True)
@@ -616,7 +615,7 @@ with st.container(border=True):
             st.info("Não encontrei categorias para TIPO_MATERIAL = 'BÁSICO'.")
 
     # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
-    st.markdown("**Fornecedores cadastrados aptos (básico) por local**")
+    st.markdown("**Fornecedores aptos por UF**")
     df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
 
     if isinstance(df_res, pd.DataFrame) and not df_res.empty:
@@ -631,9 +630,9 @@ with st.container(border=True):
         sc = int(mapa.get("SC", 0))
 
         _fmt = lambda n: f"{int(n):,}".replace(",", ".")
-        k1.metric("RJ — fornecedores básicos (cad.)", _fmt(rj))
-        k2.metric("SP — fornecedores básicos (cad.)", _fmt(sp))
-        k3.metric("SC — fornecedores básicos (cad.)", _fmt(sc))
+        k1.metric("Fornecedores RJ", _fmt(rj))
+        k2.metric("Fornecedores SP", _fmt(sp))
+        k3.metric("Fornecedores SC", _fmt(sc))
 
     else:
         st.info("Sem dados para compor os contadores por local.")
@@ -648,4 +647,5 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
