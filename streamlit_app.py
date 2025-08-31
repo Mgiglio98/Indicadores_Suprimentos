@@ -164,7 +164,7 @@ df = df_erp.copy()
 info = _repo_files_info()
 
 with st.container(border=True):
-    st.subheader("🗓️ Atualização das bases (repositório)")
+    st.subheader("🗓️ Atualização do Painel")
     st.markdown(f"**Atualizado em:** {info['max_str']}")
 
     # arquivos esperados (na ordem definida no helper)
@@ -204,7 +204,7 @@ with st.container(border=True):
     # % OFs básicas (último ano)
     pct_grp = _safe(percentual_ofs_basicas_ultimo_ano, df)
     pct = pct_grp[0] if pct_grp and isinstance(pct_grp, tuple) else 0.0
-    k2.metric("% de OFs BÁSICAS (último ano)", _format_pct_br(pct))
+    k2.metric("% de OFs Básicas no último ano", _format_pct_br(pct))
 
     # Fornecedores cadastrados (base de cadastro)
     try:
@@ -217,7 +217,7 @@ with st.container(border=True):
     # NOVO KPI: Empresas que venderam (últimos 3 anos)
     qtd_vend = _safe(quantidade_empresas_que_venderam_ultimos_3_anos, df)
     qtd_vend = qtd_vend if isinstance(qtd_vend, (int, float)) else 0
-    k4.metric("Empresas que venderam (últimos 3 anos)", _format_int_br(qtd_vend))
+    k4.metric("Fornecedores nos últimos 3 anos", _format_int_br(qtd_vend))
 
     # Cadastrados no último ano
     try:
@@ -647,5 +647,6 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
