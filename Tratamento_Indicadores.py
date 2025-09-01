@@ -766,7 +766,7 @@ def compras_atrasadas(
     start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
     end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
 
-    dias_uteis = np.busday_count(start_dates=start, end_dates=end, weekmask=weekmask, holidays=hol)
+    dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask, holidays=hol)
     agg["DIAS_UTEIS"] = dias_uteis.astype(int)
 
     # Atraso: > SLA
@@ -793,3 +793,4 @@ def compras_atrasadas(
     df_atrasos["VALOR_TOTAL_OF"] = pd.to_numeric(df_atrasos["VALOR_TOTAL_OF"], errors="coerce").round(2)
 
     return round(float(taxa), 2), atrasadas, total, df_atrasos
+
