@@ -43,22 +43,16 @@ st.set_page_config(page_title="Suprimentos • Indicadores & Fornecedores", layo
 # ===== Topo com título à esquerda e logo à direita =====
 from pathlib import Path
 
-TOP_LEFT, TOP_RIGHT = st.columns([6, 1])
+col1, col2 = st.columns([6,1], vertical_alignment="center")
 
-with TOP_LEFT:
-    st.markdown(
-        "<h1 style='margin-bottom:0.25rem;'>Suprimentos • Indicadores e Fornecedores</h1>",
-        unsafe_allow_html=True
-    )
+with col1:
+    st.title("Suprimentos • Indicadores e Fornecedores")
+    st.caption("Painel interno — visão executiva")
 
-with TOP_RIGHT:
-    logo_path = Path(__file__).parent / "logo.png"
+with col2:
+    logo_path = Path(__file__).parent / "logo_osborne.png"
     if logo_path.exists():
-        st.image(str(logo_path), use_column_width=True)
-    else:
-        # se preferir URL:
-        # st.image("https://.../logo.png", use_column_width=True)
-        st.empty()
+        st.image(str(logo_path), use_container_width=True)
 
 # ---------- Helpers ----------
 def _safe(fn, *a, **k):
@@ -695,4 +689,5 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
