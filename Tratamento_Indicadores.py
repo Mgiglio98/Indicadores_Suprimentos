@@ -689,3 +689,107 @@ def categorias_crescimento_desde_2015(
         return res
     return res.sort_values("CRESC_AA_%", ascending=False).reset_index(drop=True)
 
+def compras_atrasadas(
+    df: pd.DataFrame,
+    dias_uteis_sla: int = 3,
+    meses_lookback: int = 12,
+    feriados: Optional[List[str]] = None,
+) -> tuple[float, int, int, pd.DataFrame]:
+    """
+    Calcula atrasos de compra com base em 3 dias úteis a partir da REQ até a OF.
+    Considera atraso quando DIAS_UTEIS > dias_uteis_sla.
+    Filtra por padrão os últimos `meses_lookback` meses pela OF_DATA.
+
+    Retorna:
+      (taxa_atraso_pct, qtd_atrasadas, total_compras, df_atrasos)
+    onde df_atrasos tem colunas:
+      OF_CDG | REQ_DATA | OF_DATA | DIAS_UTEIS | DIAS_EXCEDIDOS | VALOR_TOTAL_OF | EMPRD_DESC | FORNECEDOR_DESC
+    """
+    base = df.copy()
+
+    # Garantir datetime
+    base["REQ_DATA"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
+    base["OF_DATA"]  = pd.to_datetime(base.get("OF_DATA"),  errors="coerce")
+
+    # Somente linhas com datas válidas
+    base = base.dropna(subset=["REQ_DATA", "OF_DATA"]).copy()
+
+    # Janela de análise (por OF_DATA)
+    if meses_lookback and meses_lookback > 0:
+        limite = pd.Timestamp.today().normalize() - pd.DateOffset(months=meses_lookback)
+        base = base[base["OF_DATA"] >= limite]
+
+    if base.empty:
+        return 0.0, 0, 0, pd.DataFrame(columns=[
+            "OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_EXCEDIDOS",
+            "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"
+        ])
+
+    # Numéricos para somatório de valor da OF
+    if "PRCTTL_INSUMO" in base.columns:
+        base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce").fillna(0)
+    else:
+        base["PRCTTL_INSUMO"] = 0.0
+
+    # Agregar por OF:
+    # - REQ_DATA_MIN: data de criação mais antiga vinculada
+    # - OF_DATA_REF : primeira data de OF (ou a mínima)
+    # - VALOR_TOTAL_OF: soma dos itens
+    agg = (base
+           .groupby("OF_CDG", dropna=True)
+           .agg(
+               REQ_DATA_MIN=("REQ_DATA", "min"),
+               OF_DATA_REF=("OF_DATA", "min"),
+               VALOR_TOTAL_OF=("PRCTTL_INSUMO", "sum"),
+               EMPRD_DESC=("EMPRD_DESC", "first"),
+               FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
+           )
+           .reset_index())
+
+    # Remover casos inconsistentes (OF antes da REQ)
+    agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
+    if agg.empty:
+        return 0.0, 0, 0, pd.DataFrame(columns=[
+            "OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_EXCEDIDOS",
+            "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"
+        ])
+
+    # Cálculo de DIAS ÚTEIS (seg-sex). np.busday_count é exclusivo do início e inclusivo do fim-1,
+    # o que casa com "desde a criação": conta do dia seguinte útil até a data da OF.
+    # Ex.: REQ segunda, OF quinta => 3 dias úteis (ter, qua, qui) -> dentro do SLA (<=3).
+    weekmask = "1111100"  # seg(1) ... sex(1), sáb dom = 0
+    hol = None
+    if feriados:
+        # aceitar strings 'YYYY-MM-DD' ou datetime
+        hol = np.array([pd.to_datetime(d).date() for d in feriados], dtype="datetime64[D]")
+
+    start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
+    end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
+
+    dias_uteis = np.busday_count(start_dates=start, end_dates=end, weekmask=weekmask, holidays=hol)
+    agg["DIAS_UTEIS"] = dias_uteis.astype(int)
+
+    # Atraso: > SLA
+    agg["DIAS_EXCEDIDOS"] = (agg["DIAS_UTEIS"] - int(dias_uteis_sla)).clip(lower=0).astype(int)
+    agg["ATRASO"] = agg["DIAS_UTEIS"] > int(dias_uteis_sla)
+
+    total = int(len(agg))
+    atrasadas = int(agg["ATRASO"].sum())
+    taxa = (atrasadas / total * 100.0) if total else 0.0
+
+    # DataFrame de atrasos ordenado por dias excedidos e valor
+    df_atrasos = (agg[agg["ATRASO"]]
+                  .sort_values(["DIAS_EXCEDIDOS", "VALOR_TOTAL_OF"], ascending=[False, False])
+                  .rename(columns={
+                      "REQ_DATA_MIN": "REQ_DATA",
+                      "OF_DATA_REF": "OF_DATA"
+                  })[[
+                      "OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_EXCEDIDOS",
+                      "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"
+                  ]]
+                 )
+
+    # Arredondar valor total
+    df_atrasos["VALOR_TOTAL_OF"] = pd.to_numeric(df_atrasos["VALOR_TOTAL_OF"], errors="coerce").round(2)
+
+    return round(float(taxa), 2), atrasadas, total, df_atrasos
