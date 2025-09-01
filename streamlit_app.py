@@ -364,7 +364,7 @@ with st.container(border=True):
             st.caption(f"Não consegui listar os itens da OF: {e}")
 
     with c2:
-        st.markdown("**🧩 Menor OF**")
+        st.markdown("**📉 Menor OF**")
         df_min = _safe(menor_ordem_fornecimento, df)
         if isinstance(df_min, pd.DataFrame) and not df_min.empty:
             df_min = _round_cols(df_min, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
@@ -661,6 +661,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
