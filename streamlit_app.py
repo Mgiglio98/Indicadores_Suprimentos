@@ -310,7 +310,7 @@ with st.container(border=True):
 
 # ---------- OFs destaque ----------
 with st.container(border=True):
-    st.subheader("📎 Principais Vendas")
+    st.subheader("🛒 Principais Vendas")
     c1, c2 = st.columns(2)
 
     with c1:
@@ -414,49 +414,23 @@ with st.container(border=True):
         except Exception as e:
             st.caption(f"Não consegui listar os itens da OF: {e}")
 
-    with st.container(border=False):
-        st.subheader("🧱 Maior compra de um item")
+    c3, c4 = st.columns(2)
+
+    with c3:
+        st.markdown("#### 🧱 Maior compra de um item")   # fonte menor que subheader, igual ao "Maior OF"
         df_itemmax = _safe(maior_compra_item_unico, df)
         if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
-            df_itemmax_fmt = _fmt_df_brl(
-                df_itemmax,
-                money=["PRECO_TOTAL"],
-                decimals=["QUANTIDADE"]
-            )
-            st.dataframe(
-                df_itemmax_fmt,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
-                    "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
-                    "QUANTIDADE":  st.column_config.TextColumn("QTDE"),
-                    "PRECO_TOTAL": st.column_config.TextColumn("PREÇO TOTAL"),
-                },
-            )
+            df_itemmax_fmt = _fmt_df_brl(df_itemmax, money=["PRECO_TOTAL"], decimals=["QUANTIDADE"])
+            st.dataframe(df_itemmax_fmt, use_container_width=True, hide_index=True)
         else:
             st.info("Sem dados para exibir.")
 
-    with st.container(border=False):
-        st.subheader("🧱 Menor compra de um item")
+    with c4:
+        st.markdown("#### 🧱 Menor compra de um item")
         df_itemmin = _safe(menor_compra_item_unico, df)
         if isinstance(df_itemmin, pd.DataFrame) and not df_itemmin.empty:
-            df_itemmin_fmt = _fmt_df_brl(
-                df_itemmin,
-                money=["PRECO_TOTAL"],
-                decimals=["QUANTIDADE"]
-            )
-            st.dataframe(
-                df_itemmin_fmt,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "INSUMO_CDG":  st.column_config.TextColumn("CÓDIGO"),
-                    "INSUMO_DESC": st.column_config.TextColumn("DESCRIÇÃO DO INSUMO"),
-                    "QUANTIDADE":  st.column_config.TextColumn("QTDE"),
-                    "PRECO_TOTAL": st.column_config.TextColumn("PREÇO TOTAL"),
-                },
-            )
+            df_itemmin_fmt = _fmt_df_brl(df_itemmin, money=["PRECO_TOTAL"], decimals=["QUANTIDADE"])
+            st.dataframe(df_itemmin_fmt, use_container_width=True, hide_index=True)
         else:
             st.info("Sem dados para exibir.")
 
@@ -688,6 +662,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
