@@ -244,7 +244,7 @@ with st.container(border=True):
         k7.metric(
             "Compras com atraso (12m)",
             _format_pct_br(taxa_atraso_pct),
-            f"{_format_int_br(qtd_atrasadas)}/{_format_int_br(total_compras)}"
+            #f"{_format_int_br(qtd_atrasadas)}/{_format_int_br(total_compras)}"
         )
     except Exception as e:
         k7.metric("Compras com atraso (12m)", "—")
@@ -662,3 +662,4 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
