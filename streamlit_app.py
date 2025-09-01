@@ -232,9 +232,9 @@ with st.container(border=True):
     try:
         vm_item = _safe(valor_medio_por_item, df)
         media_item = vm_item[0] if vm_item and isinstance(vm_item, tuple) else 0
-        k6.metric("Ticket médio por ITEM", _format_brl(round(media_item, 2)))
+        k6.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)))
     except Exception:
-        k6.metric("Ticket médio por ITEM", "—")
+        k6.metric("Valor médio por Insumo", "—")
 
     df_atrasos = pd.DataFrame()  # para uso no expander opcional
     try:
@@ -248,7 +248,7 @@ with st.container(border=True):
         )
     except Exception as e:
         k7.metric("Compras com atraso (12m)", "—")
-        st.caption(f"Diagnóstico (atrasos): {e}")
+        #st.caption(f"Diagnóstico (atrasos): {e}")
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
@@ -520,7 +520,7 @@ with st.container(border=True):
         st.warning(f"Não consegui gerar a série: {e}")
 
 with st.container(border=True):
-    st.subheader("📊 Fornecedores ativos por ano (últimos 10 anos)")
+    st.subheader("📊 Fornecedores ativos por ano")
 
     serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
     if isinstance(serie, pd.DataFrame) and not serie.empty:
@@ -662,7 +662,3 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
-
-
-
-
