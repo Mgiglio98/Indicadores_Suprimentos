@@ -180,7 +180,7 @@ with st.container(border=False):
     st.markdown(f"**Atualizado em:** {info['max_str']}")
 
     f1, f2 = info["files"][0], info["files"][1]
-    c1, c2 = st.columns([2,2], gap="small")  # gap pode ser "small", "medium", "large"
+    c1, c2, c3 = st.columns([1,1,4])  # espaço só no começo
 
     with c1:
         data1 = _read_file_bytes(f1["path"]) if f1["found"] else None
@@ -191,7 +191,7 @@ with st.container(border=False):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             disabled=(data1 is None),
         )
-
+    
     with c2:
         data2 = _read_file_bytes(f2["path"]) if f2["found"] else None
         st.download_button(
@@ -660,6 +660,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
