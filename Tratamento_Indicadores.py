@@ -731,10 +731,7 @@ def compras_atrasadas(
     else:
         base["PRCTTL_INSUMO"] = 0.0
 
-    # Agregar por OF:
-    # - REQ_DATA_MIN: data de criação mais antiga vinculada
-    # - OF_DATA_REF : primeira data de OF (ou a mínima)
-    # - VALOR_TOTAL_OF: soma dos itens
+    # Agregar por OF
     agg = (base
            .groupby("OF_CDG", dropna=True)
            .agg(
@@ -754,19 +751,26 @@ def compras_atrasadas(
             "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"
         ])
 
-    # Cálculo de DIAS ÚTEIS (seg-sex). np.busday_count é exclusivo do início e inclusivo do fim-1,
-    # o que casa com "desde a criação": conta do dia seguinte útil até a data da OF.
-    # Ex.: REQ segunda, OF quinta => 3 dias úteis (ter, qua, qui) -> dentro do SLA (<=3).
-    weekmask = "1111100"  # seg(1) ... sex(1), sáb dom = 0
+    # --- Cálculo de dias úteis ---
+    weekmask = "1111100"  # seg..sex
+
     hol = None
     if feriados:
-        # aceitar strings 'YYYY-MM-DD' ou datetime
-        hol = np.array([pd.to_datetime(d).date() for d in feriados], dtype="datetime64[D]")
+        try:
+            hol_list = [pd.to_datetime(d).date() for d in list(feriados) if pd.notna(d)]
+            if len(hol_list) > 0:
+                hol = np.asarray(hol_list, dtype="datetime64[D]").ravel()  # garante 1-D
+        except Exception:
+            hol = None
 
     start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
     end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
 
-    dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask, holidays=hol)
+    if hol is not None and hol.size > 0:
+        dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask, holidays=hol)
+    else:
+        dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask)
+
     agg["DIAS_UTEIS"] = dias_uteis.astype(int)
 
     # Atraso: > SLA
@@ -777,7 +781,7 @@ def compras_atrasadas(
     atrasadas = int(agg["ATRASO"].sum())
     taxa = (atrasadas / total * 100.0) if total else 0.0
 
-    # DataFrame de atrasos ordenado por dias excedidos e valor
+    # DataFrame de atrasos ordenado
     df_atrasos = (agg[agg["ATRASO"]]
                   .sort_values(["DIAS_EXCEDIDOS", "VALOR_TOTAL_OF"], ascending=[False, False])
                   .rename(columns={
@@ -789,8 +793,6 @@ def compras_atrasadas(
                   ]]
                  )
 
-    # Arredondar valor total
     df_atrasos["VALOR_TOTAL_OF"] = pd.to_numeric(df_atrasos["VALOR_TOTAL_OF"], errors="coerce").round(2)
 
     return round(float(taxa), 2), atrasadas, total, df_atrasos
-
