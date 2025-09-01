@@ -175,33 +175,30 @@ df = df_erp.copy()
 # ——— Bases (carimbo + downloads em um único container) ———
 info = _repo_files_info()
 
-with st.container(border=True):
+with st.container(border=False):
     st.subheader("🗓️ Atualização do Painel")
     st.markdown(f"**Atualizado em:** {info['max_str']}")
 
     # arquivos esperados (na ordem definida no helper)
     f1, f2 = info["files"][0], info["files"][1]
-    c1, c2 = st.columns(2)
 
-    with c1:
-        data1 = _read_file_bytes(f1["path"]) if f1["found"] else None
-        st.download_button(
-            "Baixar total_indicadores.xlsx",
-            data=data1 if data1 is not None else b"",
-            file_name="total_indicadores.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            disabled=(data1 is None),
-        )
+    data1 = _read_file_bytes(f1["path"]) if f1["found"] else None
+    st.download_button(
+        "Baixar total_indicadores.xlsx",
+        data=data1 if data1 is not None else b"",
+        file_name="total_indicadores.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=(data1 is None),
+    )
 
-    with c2:
-        data2 = _read_file_bytes(f2["path"]) if f2["found"] else None
-        st.download_button(
-            "Baixar FornecedoresAtivos.xlsx",
-            data=data2 if data2 is not None else b"",
-            file_name="FornecedoresAtivos.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            disabled=(data2 is None),
-        )
+    data2 = _read_file_bytes(f2["path"]) if f2["found"] else None
+    st.download_button(
+        "Baixar FornecedoresAtivos.xlsx",
+        data=data2 if data2 is not None else b"",
+        file_name="FornecedoresAtivos.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=(data2 is None),
+    )
 
 # ---------- KPIs ----------
 with st.container(border=True):
@@ -661,6 +658,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
