@@ -526,11 +526,10 @@ with st.container(border=True):
             .properties(height=300)
         )
         st.altair_chart(chart_ativos, use_container_width=True)
-
-        st.caption(
-            f"Variação {resumo['primeiro_ano']} → {resumo['ultimo_ano']}: "
-            f"{resumo['var_abs']} fornecedores ({resumo['var_pct']:.2f}%)."
-        )
+        #st.caption(
+            #f"Variação {resumo['primeiro_ano']} → {resumo['ultimo_ano']}: "
+            #f"{resumo['var_abs']} fornecedores ({resumo['var_pct']:.2f}%)."
+        #)
     else:
         st.info("Sem dados para exibir nos últimos 10 anos.")
 
@@ -662,6 +661,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
