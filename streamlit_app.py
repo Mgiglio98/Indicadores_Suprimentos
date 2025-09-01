@@ -594,7 +594,8 @@ with st.container(border=True):
             st.caption(
                 "Maior crescimento desde 2015 (apenas categorias com vendas em todos os últimos 5 anos): "
                 f"**{topg['CATEGORIA']}** — {float(topg['CRESC_AA_%']):.2f}% a.a. "
-                f"({int(topg['ANO_INICIO'])}→{int(topg['ANO_FIM'])}, método: {topg['METODO']})."
+                f"({int(topg['ANO_INICIO'])}→{int(topg['ANO_FIM'])})."
+                #, método: {topg['METODO']}
             )
         else:
             st.caption("Nenhuma categoria atende ao critério: vendas em TODOS os últimos 5 anos + base suficiente para cálculo.")
@@ -660,13 +661,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
