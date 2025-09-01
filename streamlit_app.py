@@ -50,10 +50,9 @@ with TOP_LEFT:
         "<h1 style='margin-bottom:0.25rem;'>Suprimentos • Indicadores e Fornecedores</h1>",
         unsafe_allow_html=True
     )
-    st.caption("Painel interno — visão executiva")
 
 with TOP_RIGHT:
-    logo_path = Path(__file__).parent / "logo_osborne.png"   # coloque o arquivo na mesma pasta do app
+    logo_path = Path(__file__).parent / "logo.png"
     if logo_path.exists():
         st.image(str(logo_path), use_column_width=True)
     else:
@@ -696,3 +695,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
