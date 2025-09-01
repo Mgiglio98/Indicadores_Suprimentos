@@ -417,7 +417,7 @@ with st.container(border=True):
     c3, c4 = st.columns(2)
 
     with c3:
-        st.markdown("#### 🧱 Maior compra de um item")   # fonte menor que subheader, igual ao "Maior OF"
+        st.markdown("**🧱 Maior compra de um item**")   # fonte menor que subheader, igual ao "Maior OF"
         df_itemmax = _safe(maior_compra_item_unico, df)
         if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
             df_itemmax_fmt = _fmt_df_brl(df_itemmax, money=["PRECO_TOTAL"], decimals=["QUANTIDADE"])
@@ -426,7 +426,7 @@ with st.container(border=True):
             st.info("Sem dados para exibir.")
 
     with c4:
-        st.markdown("#### 🧱 Menor compra de um item")
+        st.markdown("**🧱 Menor compra de um item**")
         df_itemmin = _safe(menor_compra_item_unico, df)
         if isinstance(df_itemmin, pd.DataFrame) and not df_itemmin.empty:
             df_itemmin_fmt = _fmt_df_brl(df_itemmin, money=["PRECO_TOTAL"], decimals=["QUANTIDADE"])
@@ -662,6 +662,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
