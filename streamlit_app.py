@@ -29,6 +29,7 @@ from Tratamento_Indicadores import (
     itens_da_of,
     categorias_com_venda_continua_ultimos_anos,
     categorias_crescimento_desde_2015,
+    compras_atrasadas,
 )
 
 from fornecedores_core import (
@@ -194,7 +195,7 @@ with st.container(border=True):
 # ---------- KPIs ----------
 with st.container(border=True):
     st.subheader("📊 Resumo")
-    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
 
     # Valor médio por OF
     vm = _safe(valor_medio_por_of, df)
@@ -234,6 +235,20 @@ with st.container(border=True):
         k6.metric("Ticket médio por ITEM", _format_brl(round(media_item, 2)))
     except Exception:
         k6.metric("Ticket médio por ITEM", "—")
+
+    df_atrasos = pd.DataFrame()  # para uso no expander opcional
+    try:
+        taxa_atraso_pct, qtd_atrasadas, total_compras, df_atrasos = compras_atrasadas(
+            df, dias_uteis_sla=3, meses_lookback=12
+        )
+        k7.metric(
+            "Compras com atraso (12m)",
+            _format_pct_br(taxa_atraso_pct),
+            f"{_format_int_br(qtd_atrasadas)}/{_format_int_br(total_compras)}"
+        )
+    except Exception as e:
+        k7.metric("Compras com atraso (12m)", "—")
+        st.caption(f"Diagnóstico (atrasos): {e}")
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
@@ -647,6 +662,7 @@ section.main > div { padding-top: 0.25rem; }
 """,
     unsafe_allow_html=True,
 )
+
 
 
 
