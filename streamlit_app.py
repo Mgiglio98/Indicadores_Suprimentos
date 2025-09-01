@@ -40,7 +40,26 @@ from fornecedores_core import (
 )
 
 st.set_page_config(page_title="Suprimentos • Indicadores & Fornecedores", layout="wide")
-st.title("Suprimentos • Indicadores e Fornecedores")
+# ===== Topo com título à esquerda e logo à direita =====
+from pathlib import Path
+
+TOP_LEFT, TOP_RIGHT = st.columns([6, 1])
+
+with TOP_LEFT:
+    st.markdown(
+        "<h1 style='margin-bottom:0.25rem;'>Suprimentos • Indicadores e Fornecedores</h1>",
+        unsafe_allow_html=True
+    )
+    st.caption("Painel interno — visão executiva")
+
+with TOP_RIGHT:
+    logo_path = Path(__file__).parent / "logo_osborne.png"   # coloque o arquivo na mesma pasta do app
+    if logo_path.exists():
+        st.image(str(logo_path), use_column_width=True)
+    else:
+        # se preferir URL:
+        # st.image("https://.../logo.png", use_column_width=True)
+        st.empty()
 
 # ---------- Helpers ----------
 def _safe(fn, *a, **k):
@@ -653,13 +672,27 @@ with st.container(border=True):
         st.info("Sem dados para compor os contadores por local.")
         
 # ---------- Estilo ----------
-st.markdown(
-    """
+st.markdown("""
 <style>
-[data-testid="stMetricValue"] { font-size: 1.6rem; }
-section.main > div { padding-top: 0.25rem; }
-</style>
-""",
-    unsafe_allow_html=True,
-)
+/* margem menor no topo geral */
+section.main > div { padding-top: 0.5rem; }
 
+/* h1 compacto */
+h1 { line-height: 1.25; }
+
+/* cards: borda mais suave e menos espaço vertical */
+div[data-testid="stMetric"] {
+    background: rgba(255,255,255,0.02);
+    padding: 0.75rem 0.75rem;
+    border-radius: 12px;
+}
+
+/* valor do KPI um pouco maior */
+[data-testid="stMetricValue"] { font-size: 1.55rem; }
+
+/* subtítulo das seções */
+.block-container h3, .block-container h2, .block-container h4 {
+    letter-spacing: .2px;
+}
+</style>
+""", unsafe_allow_html=True)
