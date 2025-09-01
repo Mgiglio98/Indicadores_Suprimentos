@@ -47,10 +47,9 @@ col1, col2 = st.columns([6,1], vertical_alignment="center")
 
 with col1:
     st.title("Suprimentos • Indicadores e Fornecedores")
-    st.caption("Painel interno — visão executiva")
 
 with col2:
-    logo_path = Path(__file__).parent / "logo_osborne.png"
+    logo_path = Path(__file__).parent / "logo.png"
     if logo_path.exists():
         st.image(str(logo_path), use_container_width=True)
 
@@ -689,5 +688,6 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
