@@ -542,27 +542,30 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("📦 Volume por Categoria")
 
-    # --- Mais compradas (últimos 5 anos) — gráfico único, largura total ---
     st.markdown("**Mais compradas (últimos 5 anos)**")
     df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
     if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
         df_cat5 = df_cat5.copy()
         df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
-        toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
     
-        toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
+        # ordena e pega top N
+        toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8).reset_index(drop=True)
+    
+        # ordem explícita (maior → menor) para o eixo Y
+        order_cats = toplot["CATEGORIA"].tolist()
+    
+        # rótulos em BRL
         toplot["VALOR_TOTAL_TXT"] = toplot["VALOR_TOTAL"].map(_format_brl)
-        
+    
         _altura = max(360, 36 * len(toplot))
-        
-        bars = (
+    
+        base = (
             alt.Chart(toplot)
-            .mark_bar()
             .encode(
                 y=alt.Y(
                     "CATEGORIA:N",
+                    sort=order_cats,                         # << força a ordem desejada
                     title="CATEGORIA",
-                    sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
                     axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
                 ),
                 x=alt.X("VALOR_TOTAL:Q", title=None, axis=None),
@@ -570,18 +573,12 @@ with st.container(border=True):
             )
             .properties(height=_altura)
         )
-        labels = (
-            alt.Chart(toplot)
-            .mark_text(align="left", dx=5)
-            .encode(
-                y="CATEGORIA:N",
-                x="VALOR_TOTAL:Q",
-                text="VALOR_TOTAL_TXT:N",
-            )
-        )
-        chart_cat = bars + labels
-        st.altair_chart(chart_cat, use_container_width=True)
-        # Caption do Top (continua igual)
+    
+        bars = base.mark_bar()
+        labels = base.mark_text(align="left", dx=5).encode(text="VALOR_TOTAL_TXT:N")
+    
+        st.altair_chart(bars + labels, use_container_width=True)
+    
         top = toplot.iloc[0]
         st.caption(f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({float(top['PART_%']):.2f}%)")
     else:
@@ -680,6 +677,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
