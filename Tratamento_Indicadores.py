@@ -312,7 +312,11 @@ def maior_compra_item_unico(df):
 
     return out
 
-def menor_compra_item_unico(df):
+def menor_compra_item_unico(
+    df: pd.DataFrame,
+    min_total: float = 1.0,                 # piso mínimo do total do item (R$)
+    excluir_itens_nao_positivos: bool = True # ignora itens com total <= 0
+) -> pd.DataFrame:
     def _pick(cands, cols):
         for c in cands:
             if c in cols:
@@ -334,12 +338,12 @@ def menor_compra_item_unico(df):
     if not (col_cod and col_desc):
         raise KeyError("Faltam colunas de código/descrição do item (ex.: INSUMO_CDG / INSUMO_DESC).")
 
-    # numéricos
+    # Numéricos
     if col_qtd: base[col_qtd] = pd.to_numeric(base[col_qtd], errors="coerce")
     if col_tot: base[col_tot] = pd.to_numeric(base[col_tot], errors="coerce")
     if col_pu:  base[col_pu]  = pd.to_numeric(base[col_pu],  errors="coerce")
 
-    # total por linha
+    # Total por linha
     if col_tot:
         base["_TOTAL_ITEM_"] = base[col_tot]
     elif col_qtd and col_pu:
@@ -351,13 +355,23 @@ def menor_compra_item_unico(df):
     if base.empty:
         return pd.DataFrame(columns=["INSUMO_CDG","INSUMO_DESC","QUANTIDADE","PRECO_TOTAL"])
 
-    # prioriza mínimos positivos; se não houver, usa o menor valor disponível
-    pos = base[base["_TOTAL_ITEM_"] > 0]
-    cand = pos if not pos.empty else base
+    # Ignora totais <= 0 se solicitado
+    if excluir_itens_nao_positivos:
+        base = base[base["_TOTAL_ITEM_"] > 0]
+
+    if base.empty:
+        return pd.DataFrame(columns=["INSUMO_CDG","INSUMO_DESC","QUANTIDADE","PRECO_TOTAL"])
+
+    # Aplica piso mínimo; se nada atingir, usa o menor > 0 (fallback)
+    cand = base[base["_TOTAL_ITEM_"] >= float(min_total)]
+    if cand.empty:
+        cand = base[base["_TOTAL_ITEM_"] > 0]
+        if cand.empty:
+            return pd.DataFrame(columns=["INSUMO_CDG","INSUMO_DESC","QUANTIDADE","PRECO_TOTAL"])
 
     top = cand.sort_values("_TOTAL_ITEM_", ascending=True).head(1).reset_index(drop=True)
 
-    # calcula QTDE se não houver coluna
+    # Calcula QTDE se não houver coluna
     quantidade = None
     if col_qtd and pd.notna(top.at[0, col_qtd]):
         quantidade = float(top.at[0, col_qtd])
@@ -952,4 +966,5 @@ def tempos_medios_12m_5a(
         feriados=feriados,
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
+
 
