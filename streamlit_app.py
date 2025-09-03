@@ -562,7 +562,7 @@ with st.container(border=True):
                 y=alt.Y(
                     "CATEGORIA:N",
                     title="CATEGORIA",
-                    sort='-x',  # <<<< garante maior valor no topo
+                    sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
                     axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
                 ),
                 x=alt.X("VALOR_TOTAL:Q", title=None, axis=None),
@@ -680,6 +680,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
