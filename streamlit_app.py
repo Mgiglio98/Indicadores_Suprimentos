@@ -264,16 +264,18 @@ with st.container(border=True):
     except Exception:
         m12, m5a = None, None
 
-    # --------- Linha 1 (5 KPIs) ---------
-    r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
+   # Linha 1 centralizada (5 KPIs)
+    spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
+    
     r1c1.metric("Valor médio por OF", _format_brl(round(media_of, 2)) if media_of is not None else "—")
     r1c2.metric("% de OFs Básicas no último ano", _format_pct_br(pct_bas) if pct_bas is not None else "—")
     r1c3.metric("Fornecedores cadastrados", f"{total_cad}" if total_cad is not None else "—")
     r1c4.metric("Fornecedores nos últimos 3 anos", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
     r1c5.metric("Cadastrados no último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
 
-    # --------- Linha 2 (4 KPIs) ---------
-    r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+    # Linha 2 centralizada (4 KPIs)
+    spacer1, r2c1, r2c2, r2c3, r2c4, spacer2 = st.columns([1, 2, 2, 2, 2, 1])
+    
     r2c1.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     r2c2.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
     r2c3.metric("Tempo médio p/ gerar OF (12m, úteis)", (f"{float(m12):.2f} dias".replace(".", ",")) if m12 is not None else "—")
@@ -653,5 +655,6 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
