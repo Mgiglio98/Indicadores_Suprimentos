@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 import unicodedata
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 def _format_brl(v):
     return f"R$ {v:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
@@ -799,3 +799,141 @@ def compras_atrasadas(
 
     return round(float(taxa), 2), atrasadas, total, df_atrasos
 
+def tempo_medio_geracao_of(
+    df: pd.DataFrame,
+    considerar_dias_uteis: bool = True,
+    meses_lookback: int = 12,
+    feriados: Optional[List[str]] = None,
+) -> tuple[float, float, float, pd.DataFrame]:
+    """
+    Calcula o tempo entre a data da REQ (primeira) e a data da OF (primeira) por OF,
+    e retorna métricas agregadas.
+
+    Parâmetros:
+      - considerar_dias_uteis: se True, usa dias úteis (seg-sex, com feriados).
+                               se False, usa dias corridos.
+      - meses_lookback: janela de análise (filtra por OF_DATA).
+      - feriados: lista opcional de strings de datas (ex.: '2025-09-07') a excluir como dias úteis.
+
+    Retorna:
+      (media, mediana, p90, df_duracoes)
+      onde df_duracoes contém:
+        OF_CDG | REQ_DATA | OF_DATA | DIAS_UTEIS | DIAS_CORRIDOS | VALOR_TOTAL_OF | EMPRD_DESC | FORNECEDOR_DESC
+    """
+    base = df.copy()
+
+    # Garantir datetime
+    base["REQ_DATA"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
+    base["OF_DATA"]  = pd.to_datetime(base.get("OF_DATA"),  errors="coerce")
+
+    # Manter apenas pares válidos
+    base = base.dropna(subset=["REQ_DATA", "OF_DATA"]).copy()
+
+    # Janela (por OF_DATA), consistente com 'compras_atrasadas'
+    if meses_lookback and meses_lookback > 0:
+        limite = pd.Timestamp.today().normalize() - pd.DateOffset(months=meses_lookback)
+        base = base[base["OF_DATA"] >= limite]
+
+    if base.empty:
+        cols = ["OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_CORRIDOS",
+                "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"]
+        return 0.0, 0.0, 0.0, pd.DataFrame(columns=cols)
+
+    # Preparar numéricos para somar valor por OF
+    if "PRCTTL_INSUMO" in base.columns:
+        base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce").fillna(0)
+    else:
+        base["PRCTTL_INSUMO"] = 0.0
+
+    # Agregação por OF: primeira REQ, primeira OF, soma de valor e metadados
+    agg = (base
+           .groupby("OF_CDG", dropna=True)
+           .agg(
+               REQ_DATA_MIN=("REQ_DATA", "min"),
+               OF_DATA_REF=("OF_DATA", "min"),
+               VALOR_TOTAL_OF=("PRCTTL_INSUMO", "sum"),
+               EMPRD_DESC=("EMPRD_DESC", "first"),
+               FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
+           )
+           .reset_index())
+
+    # Remover inconsistências (OF antes da REQ)
+    agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
+    if agg.empty:
+        cols = ["OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_CORRIDOS",
+                "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"]
+        return 0.0, 0.0, 0.0, pd.DataFrame(columns=cols)
+
+    # Dias corridos
+    agg["DIAS_CORRIDOS"] = (agg["OF_DATA_REF"] - agg["REQ_DATA_MIN"]).dt.days.astype(int)
+
+    # Dias úteis (seg-sex) com feriados opcionais
+    weekmask = "1111100"
+    start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
+    end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
+
+    hol = None
+    if feriados:
+        try:
+            hol_list = [pd.to_datetime(d).date() for d in list(feriados) if pd.notna(d)]
+            if len(hol_list) > 0:
+                hol = np.asarray(hol_list, dtype="datetime64[D]").ravel()
+        except Exception:
+            hol = None
+
+    if hol is not None and hol.size > 0:
+        dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask, holidays=hol)
+    else:
+        dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask)
+
+    agg["DIAS_UTEIS"] = dias_uteis.astype(int)
+
+    # Série alvo conforme parâmetro
+    col = "DIAS_UTEIS" if considerar_dias_uteis else "DIAS_CORRIDOS"
+    serie = pd.to_numeric(agg[col], errors="coerce").dropna()
+
+    if serie.empty:
+        cols = ["OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_CORRIDOS",
+                "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"]
+        return 0.0, 0.0, 0.0, pd.DataFrame(columns=cols)
+
+    media = float(serie.mean())
+    mediana = float(serie.median())
+    p90 = float(np.percentile(serie.to_numpy(), 90))
+
+    # DataFrame detalhado para exploração/visualização
+    df_duracoes = (agg
+                   .rename(columns={"REQ_DATA_MIN": "REQ_DATA", "OF_DATA_REF": "OF_DATA"})
+                   [["OF_CDG","REQ_DATA","OF_DATA","DIAS_UTEIS","DIAS_CORRIDOS",
+                     "VALOR_TOTAL_OF","EMPRD_DESC","FORNECEDOR_DESC"]]
+                   .sort_values(col, ascending=False)
+                   .reset_index(drop=True))
+
+    return round(media, 2), round(mediana, 2), round(p90, 2), df_duracoes
+
+def tempos_medios_12m_5a(
+    df: pd.DataFrame,
+    considerar_dias_uteis: bool = True,
+    feriados: Optional[List[str]] = None,
+) -> Tuple[float, float]:
+    """
+    Retorna o tempo médio de geração de OF:
+      - últimos 12 meses
+      - últimos 5 anos (60 meses)
+
+    Usa REQ_DATA -> OF_DATA e a lógica já existente em tempo_medio_geracao_of.
+    considerar_dias_uteis=True utiliza dias úteis (seg-sex, com feriados opcionais).
+    """
+    media_12m, _, _, _ = tempo_medio_geracao_of(
+        df,
+        considerar_dias_uteis=considerar_dias_uteis,
+        meses_lookback=12,
+        feriados=feriados,
+    )
+    media_5a, _, _, _ = tempo_medio_geracao_of(
+        df,
+        considerar_dias_uteis=considerar_dias_uteis,
+        meses_lookback=60,  # 5 anos
+        feriados=feriados,
+    )
+    return round(float(media_12m), 2), round(float(media_5a), 2)
