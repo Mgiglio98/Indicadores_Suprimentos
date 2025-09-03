@@ -30,6 +30,8 @@ from Tratamento_Indicadores import (
     categorias_com_venda_continua_ultimos_anos,
     categorias_crescimento_desde_2015,
     compras_atrasadas,
+    tempo_medio_geracao_of,
+    tempos_medios_12m_5a,
 )
 
 from fornecedores_core import (
@@ -260,6 +262,21 @@ with st.container(border=True):
         k7.metric("Compras com atraso (12m)", "—")
         #st.caption(f"Diagnóstico (atrasos): {e}")
 
+    # --- NOVOS KPIs: tempo médio para gerar OF (dias úteis) ---
+    try:
+        m12, m5a = tempos_medios_12m_5a(df, considerar_dias_uteis=True)
+        v12 = f"{float(m12):.2f} dias".replace(".", ",")
+        v5a = f"{float(m5a):.2f} dias".replace(".", ",")
+
+        k8, k9 = st.columns(2)
+        k8.metric("Tempo médio p/ gerar OF (12m, úteis)", v12)
+        k9.metric("Tempo médio p/ gerar OF (5 anos, úteis)", v5a)
+    except Exception as e:
+        k8, k9 = st.columns(2)
+        k8.metric("Tempo médio p/ gerar OF (12m, úteis)", "—")
+        k9.metric("Tempo médio p/ gerar OF (5 anos, úteis)", "—")
+        st.caption(f"Diagnóstico (tempo médio de geração de OF): {e}")
+
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
     st.subheader("🥇 TOP fornecedores por UF")
@@ -481,29 +498,6 @@ with st.container(border=True):
 
 # ---------- Série de Fornecedores Ativos ----------
 with st.container(border=True):
-    st.subheader("👥 Fornecedores cadastrados por ano")
-    try:
-        serie_cad = serie_fornecedores_cadastrados_por_ano(df_forn, anos=10)
-        if isinstance(serie_cad, pd.DataFrame) and not serie_cad.empty:
-            serie_cad_vis = serie_cad.copy()
-            serie_cad_vis["ANO_TXT"] = serie_cad_vis["ANO"].astype(str)
-            
-            chart_cad = (
-                alt.Chart(serie_cad_vis)
-                .mark_line(point=True)
-                .encode(
-                    x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),  # horizontal, sem separadores
-                    y=alt.Y("FORNECEDORES_CADASTRADOS:Q", title="FORNECEDORES CADASTRADOS"),
-                )
-                .properties(height=300)
-            )
-            st.altair_chart(chart_cad, use_container_width=True)
-        else:
-            st.info("Sem dados para exibir.")
-    except Exception as e:
-        st.warning(f"Não consegui gerar a série: {e}")
-
-with st.container(border=True):
     st.subheader("📊 Fornecedores ativos por ano")
 
     serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
@@ -525,10 +519,6 @@ with st.container(border=True):
             .properties(height=300)
         )
         st.altair_chart(chart_ativos, use_container_width=True)
-        #st.caption(
-            #f"Variação {resumo['primeiro_ano']} → {resumo['ultimo_ano']}: "
-            #f"{resumo['var_abs']} fornecedores ({resumo['var_pct']:.2f}%)."
-        #)
     else:
         st.info("Sem dados para exibir nos últimos 10 anos.")
 
@@ -661,3 +651,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
