@@ -89,6 +89,7 @@ def maior_ordem_fornecimento(df):
         df.groupby("OF_CDG")
         .agg(
             VALOR_TOTAL=("PRCTTL_INSUMO", "sum"),
+            EMPRD_CDG = ("EMPRD", "first"), 
             EMPRD_DESC=("EMPRD_DESC", "first"),
             FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
             DATA_OF=("OF_DATA_DT", "first"),
@@ -117,6 +118,7 @@ def menor_ordem_fornecimento(df):
         df.groupby("OF_CDG")
         .agg(
             VALOR_TOTAL=("PRCTTL_INSUMO", "sum"),
+            EMPRD_CDG = ("EMPRD", "first"),
             EMPRD_DESC=("EMPRD_DESC", "first"),
             FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
             DATA_OF=("OF_DATA_DT", "first"),
@@ -796,3 +798,4 @@ def compras_atrasadas(
     df_atrasos["VALOR_TOTAL_OF"] = pd.to_numeric(df_atrasos["VALOR_TOTAL_OF"], errors="coerce").round(2)
 
     return round(float(taxa), 2), atrasadas, total, df_atrasos
+
