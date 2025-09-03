@@ -110,34 +110,49 @@ def maior_ordem_fornecimento(df):
     g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce").round(2)
     return g
 
-def menor_ordem_fornecimento(df):
+def menor_ordem_fornecimento(
+    df: pd.DataFrame,
+    min_total: float = 1.0,                 # <<< piso mínimo da OF (R$)
+    excluir_itens_nao_positivos: bool = True # <<< ignora itens <= 0 ao somar
+) -> pd.DataFrame:
     df = df.copy()
-    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+    df["OF_DATA_DT"] = pd.to_datetime(df.get("OF_DATA"), errors="coerce")
+    df["PRCTTL_INSUMO"] = pd.to_numeric(df.get("PRCTTL_INSUMO"), errors="coerce")
+
+    # Opcional: remove itens zero/negativos para não "artificializar" o total da OF
+    if excluir_itens_nao_positivos:
+        df = df[df["PRCTTL_INSUMO"] > 0]
 
     g = (
-        df.groupby("OF_CDG")
-        .agg(
-            VALOR_TOTAL=("PRCTTL_INSUMO", "sum"),
-            EMPRD_CDG = ("EMPRD", "first"),
-            EMPRD_DESC=("EMPRD_DESC", "first"),
-            FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
-            DATA_OF=("OF_DATA_DT", "first"),
-            TOTAL_ITENS=("INSUMO_CDG", "nunique"),
-        )
-        .reset_index()
+        df.groupby("OF_CDG", dropna=True)
+          .agg(
+              VALOR_TOTAL=("PRCTTL_INSUMO", "sum"),
+              EMPRD_CDG=("EMPRD", "first"),
+              EMPRD_DESC=("EMPRD_DESC", "first"),
+              FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
+              DATA_OF=("OF_DATA_DT", "first"),
+              TOTAL_ITENS=("INSUMO_CDG", "nunique"),
+          )
+          .reset_index()
     )
 
-    # >>> NOVO: excluir OFs com total <= 0 (ou NaN)
+    # Mantém só OFs com total > 0
     g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce")
-    g = g[g["VALOR_TOTAL"] > 0]
 
-    if g.empty:
-        return g
+    # 1) Tenta com piso mínimo (ex.: R$ 1,00)
+    g_valid = g[g["VALOR_TOTAL"] >= float(min_total)]
 
-    g = g.sort_values("VALOR_TOTAL", ascending=True).head(1)
-    g["DATA_OF"] = pd.to_datetime(g["DATA_OF"]).dt.strftime("%d/%m/%Y")
-    g["VALOR_TOTAL"] = pd.to_numeric(g["VALOR_TOTAL"], errors="coerce").round(2)
-    return g
+    # 2) Se não houver nenhuma >= piso, faz fallback para a menor > 0
+    if g_valid.empty:
+        g_valid = g[g["VALOR_TOTAL"] > 0]
+
+    if g_valid.empty:
+        return g_valid  # sem dados válidos
+
+    out = g_valid.sort_values("VALOR_TOTAL", ascending=True).head(1).copy()
+    out["DATA_OF"] = pd.to_datetime(out["DATA_OF"]).dt.strftime("%d/%m/%Y")
+    out["VALOR_TOTAL"] = pd.to_numeric(out["VALOR_TOTAL"], errors="coerce").round(2)
+    return out
 
 def valor_medio_por_of(df):
     tot = df.groupby("OF_CDG")["PRCTTL_INSUMO"].sum().reset_index(name="VALOR_TOTAL_OF")
@@ -937,3 +952,4 @@ def tempos_medios_12m_5a(
         feriados=feriados,
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
+
