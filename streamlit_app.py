@@ -550,11 +550,11 @@ with st.container(border=True):
         df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
         toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
     
-        # rótulo BR
+        toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
         toplot["VALOR_TOTAL_TXT"] = toplot["VALOR_TOTAL"].map(_format_brl)
-    
+        
         _altura = max(360, 36 * len(toplot))
-    
+        
         bars = (
             alt.Chart(toplot)
             .mark_bar()
@@ -562,30 +562,28 @@ with st.container(border=True):
                 y=alt.Y(
                     "CATEGORIA:N",
                     title="CATEGORIA",
-                    sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
+                    sort='-x',  # <<<< garante maior valor no topo
                     axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
                 ),
-                x=alt.X("VALOR_TOTAL:Q", title=None, axis=None),   # << remove eixo de valores
+                x=alt.X("VALOR_TOTAL:Q", title=None, axis=None),
                 tooltip=["CATEGORIA", "VALOR_TOTAL", "PART_%"],
             )
             .properties(height=_altura)
         )
         labels = (
             alt.Chart(toplot)
-            .mark_text(align="left", dx=5)  # rótulo à direita da barra
+            .mark_text(align="left", dx=5)
             .encode(
                 y="CATEGORIA:N",
                 x="VALOR_TOTAL:Q",
-                text="VALOR_TOTAL_TXT:N"
+                text="VALOR_TOTAL_TXT:N",
             )
         )
         chart_cat = bars + labels
         st.altair_chart(chart_cat, use_container_width=True)
-    
+        # Caption do Top (continua igual)
         top = toplot.iloc[0]
-        st.caption(
-            f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({float(top['PART_%']):.2f}%)"
-        )
+        st.caption(f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({float(top['PART_%']):.2f}%)")
     else:
         st.info("Sem dados para exibir.")
 
@@ -682,6 +680,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
