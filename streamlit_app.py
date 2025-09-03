@@ -506,22 +506,34 @@ with st.container(border=True):
 
     serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
     if isinstance(serie, pd.DataFrame) and not serie.empty:
-        # garante anos contínuos (0 quando não teve fornecedor ativo)
         serie_plot = _fill_last_n_years(serie, year_col="ANO", y_col="FORNECEDORES_ATIVOS", n=10)
-
         serie_plot_vis = serie_plot.copy()
         serie_plot_vis["ANO_TXT"] = serie_plot_vis["ANO"].astype(str)
-        
-        chart_ativos = (
+        # rótulo BR
+        serie_plot_vis["FORNECEDORES_ATIVOS_TXT"] = serie_plot_vis["FORNECEDORES_ATIVOS"].map(_format_int_br)
+    
+        bars = (
             alt.Chart(serie_plot_vis)
             .mark_bar()
             .encode(
                 x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("FORNECEDORES_ATIVOS:Q", title="FORNECEDORES ATIVOS"),
+                y=alt.Y("FORNECEDORES_ATIVOS:Q", title=None, axis=None),   # << remove eixo de valores
                 tooltip=["ANO_TXT", "FORNECEDORES_ATIVOS"]
             )
             .properties(height=300)
         )
+    
+        labels = (
+            alt.Chart(serie_plot_vis)
+            .mark_text(dy=-5)  # acima da barra
+            .encode(
+                x="ANO_TXT:N",
+                y="FORNECEDORES_ATIVOS:Q",
+                text="FORNECEDORES_ATIVOS_TXT:N"
+            )
+        )
+    
+        chart_ativos = bars + labels
         st.altair_chart(chart_ativos, use_container_width=True)
     else:
         st.info("Sem dados para exibir nos últimos 10 anos.")
@@ -536,13 +548,14 @@ with st.container(border=True):
     if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
         df_cat5 = df_cat5.copy()
         df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
-
-        # ordena do maior para o menor e limita (ajuste o .head(N) se quiser mostrar mais/menos)
         toplot = df_cat5.sort_values("VALOR_TOTAL", ascending=False).head(8)
-
-        # altura maior para caber rótulos completos
+    
+        # rótulo BR
+        toplot["VALOR_TOTAL_TXT"] = toplot["VALOR_TOTAL"].map(_format_brl)
+    
         _altura = max(360, 36 * len(toplot))
-        chart_cat = (
+    
+        bars = (
             alt.Chart(toplot)
             .mark_bar()
             .encode(
@@ -550,16 +563,25 @@ with st.container(border=True):
                     "CATEGORIA:N",
                     title="CATEGORIA",
                     sort=alt.SortField(field="VALOR_TOTAL", order="descending"),
-                    axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),  # nomes completos
+                    axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
                 ),
-                x=alt.X("VALOR_TOTAL:Q", title="VALOR TOTAL"),
+                x=alt.X("VALOR_TOTAL:Q", title=None, axis=None),   # << remove eixo de valores
                 tooltip=["CATEGORIA", "VALOR_TOTAL", "PART_%"],
             )
             .properties(height=_altura)
         )
+        labels = (
+            alt.Chart(toplot)
+            .mark_text(align="left", dx=5)  # rótulo à direita da barra
+            .encode(
+                y="CATEGORIA:N",
+                x="VALOR_TOTAL:Q",
+                text="VALOR_TOTAL_TXT:N"
+            )
+        )
+        chart_cat = bars + labels
         st.altair_chart(chart_cat, use_container_width=True)
-
-        # caption do Top
+    
         top = toplot.iloc[0]
         st.caption(
             f"Top: **{top['CATEGORIA']}** — {_format_brl(top['VALOR_TOTAL'])} ({float(top['PART_%']):.2f}%)"
@@ -583,13 +605,18 @@ with st.container(border=True):
             # opcional: excluir categorias específicas
             res_g = res_g[res_g["CATEGORIA"].astype(str).str.upper() != "DESPESAS OPERACIONAIS"]
     
+        # ... depois de calcular res_g e aplicar o filtro "DESPESAS OPERACIONAIS"
         if isinstance(res_g, pd.DataFrame) and not res_g.empty:
-            topg = res_g.iloc[0]
+            top2 = res_g.head(2)
+            partes = []
+            for _, r in top2.iterrows():
+                partes.append(
+                    f"**{r['CATEGORIA']}** — {float(r['CRESC_AA_%']):.2f}% a.a. "
+                    f"({int(r['ANO_INICIO'])}→{int(r['ANO_FIM'])})"
+                )
             st.caption(
                 "Maior crescimento desde 2015 (apenas categorias com vendas em todos os últimos 5 anos): "
-                f"**{topg['CATEGORIA']}** — {float(topg['CRESC_AA_%']):.2f}% a.a. "
-                f"({int(topg['ANO_INICIO'])}→{int(topg['ANO_FIM'])})."
-                #, método: {topg['METODO']}
+                + " | ".join(partes) + "."
             )
         else:
             st.caption("Nenhuma categoria atende ao critério: vendas em TODOS os últimos 5 anos + base suficiente para cálculo.")
@@ -655,6 +682,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
