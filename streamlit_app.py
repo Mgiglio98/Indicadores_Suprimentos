@@ -207,75 +207,77 @@ with st.container(border=False):
 # ---------- KPIs ----------
 with st.container(border=True):
     st.subheader("📊 Resumo")
-    k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
 
+    # --------- Cálculos prévios (com fallback) ---------
     # Valor médio por OF
-    vm = _safe(valor_medio_por_of, df)
-    media = vm[0] if vm and isinstance(vm, tuple) else 0
-    k1.metric("Valor médio por OF", _format_brl(round(media, 2)))
+    try:
+        vm = valor_medio_por_of(df)
+        media_of = vm[0] if isinstance(vm, tuple) else 0
+    except Exception:
+        media_of = None
 
     # % OFs básicas (último ano)
-    pct_grp = _safe(percentual_ofs_basicas_ultimo_ano, df)
-    pct = pct_grp[0] if pct_grp and isinstance(pct_grp, tuple) else 0.0
-    k2.metric("% de OFs Básicas no último ano", _format_pct_br(pct))
+    try:
+        pct_grp = percentual_ofs_basicas_ultimo_ano(df)
+        pct_bas = pct_grp[0] if isinstance(pct_grp, tuple) else 0.0
+    except Exception:
+        pct_bas = None
 
     # Fornecedores cadastrados (base de cadastro)
     try:
         total_cad = total_empresas_cadastradas(df_forn)
-        k3.metric("Fornecedores cadastrados", f"{total_cad}")
-    except Exception as e:
-        k3.metric("Fornecedores cadastrados", "—")
-        st.caption(f"Diagnóstico: {e}")
+    except Exception:
+        total_cad = None
 
-    # NOVO KPI: Empresas que venderam (últimos 3 anos)
-    qtd_vend = _safe(quantidade_empresas_que_venderam_ultimos_3_anos, df)
-    qtd_vend = qtd_vend if isinstance(qtd_vend, (int, float)) else 0
-    k4.metric("Fornecedores nos últimos 3 anos", _format_int_br(qtd_vend))
+    # Empresas que venderam (últimos 3 anos)
+    try:
+        qtd_vend = quantidade_empresas_que_venderam_ultimos_3_anos(df)
+    except Exception:
+        qtd_vend = None
 
     # Cadastrados no último ano
     try:
         cad_serie = serie_fornecedores_cadastrados_por_ano(df_forn, anos=1)
         cad_no_ano = int(cad_serie["FORNECEDORES_CADASTRADOS"].sum()) if not cad_serie.empty else 0
-        k5.metric("Cadastrados no último ano", f"{cad_no_ano}")
     except Exception:
-        pass
+        cad_no_ano = None
 
     # Ticket médio por ITEM (linha)
     try:
-        vm_item = _safe(valor_medio_por_item, df)
-        media_item = vm_item[0] if vm_item and isinstance(vm_item, tuple) else 0
-        k6.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)))
+        vm_item = valor_medio_por_item(df)
+        media_item = vm_item[0] if isinstance(vm_item, tuple) else 0
     except Exception:
-        k6.metric("Valor médio por Insumo", "—")
+        media_item = None
 
-    df_atrasos = pd.DataFrame()  # para uso no expander opcional
+    # Compras com atraso (12m)
+    df_atrasos = pd.DataFrame()
     try:
         taxa_atraso_pct, qtd_atrasadas, total_compras, df_atrasos = compras_atrasadas(
             df, dias_uteis_sla=3, meses_lookback=12
         )
-        k7.metric(
-            "Compras com atraso (12m)",
-            _format_pct_br(taxa_atraso_pct),
-            #f"{_format_int_br(qtd_atrasadas)}/{_format_int_br(total_compras)}"
-        )
-    except Exception as e:
-        k7.metric("Compras com atraso (12m)", "—")
-        #st.caption(f"Diagnóstico (atrasos): {e}")
+    except Exception:
+        taxa_atraso_pct = None
 
-    # --- NOVOS KPIs: tempo médio para gerar OF (dias úteis) ---
+    # Tempos médios (12m e 5a, em dias úteis)
     try:
         m12, m5a = tempos_medios_12m_5a(df, considerar_dias_uteis=True)
-        v12 = f"{float(m12):.2f} dias".replace(".", ",")
-        v5a = f"{float(m5a):.2f} dias".replace(".", ",")
+    except Exception:
+        m12, m5a = None, None
 
-        k8, k9 = st.columns(2)
-        k8.metric("Tempo médio p/ gerar OF (12m, úteis)", v12)
-        k9.metric("Tempo médio p/ gerar OF (5 anos, úteis)", v5a)
-    except Exception as e:
-        k8, k9 = st.columns(2)
-        k8.metric("Tempo médio p/ gerar OF (12m, úteis)", "—")
-        k9.metric("Tempo médio p/ gerar OF (5 anos, úteis)", "—")
-        st.caption(f"Diagnóstico (tempo médio de geração de OF): {e}")
+    # --------- Linha 1 (5 KPIs) ---------
+    r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
+    r1c1.metric("Valor médio por OF", _format_brl(round(media_of, 2)) if media_of is not None else "—")
+    r1c2.metric("% de OFs Básicas no último ano", _format_pct_br(pct_bas) if pct_bas is not None else "—")
+    r1c3.metric("Fornecedores cadastrados", f"{total_cad}" if total_cad is not None else "—")
+    r1c4.metric("Fornecedores nos últimos 3 anos", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
+    r1c5.metric("Cadastrados no último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
+
+    # --------- Linha 2 (4 KPIs) ---------
+    r2c1, r2c2, r2c3, r2c4 = st.columns(4)
+    r2c1.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
+    r2c2.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
+    r2c3.metric("Tempo médio p/ gerar OF (12m, úteis)", (f"{float(m12):.2f} dias".replace(".", ",")) if m12 is not None else "—")
+    r2c4.metric("Tempo médio p/ gerar OF (5 anos, úteis)", (f"{float(m5a):.2f} dias".replace(".", ",")) if m5a is not None else "—")
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
@@ -651,4 +653,5 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
