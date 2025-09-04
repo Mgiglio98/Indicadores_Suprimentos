@@ -112,7 +112,7 @@ def maior_ordem_fornecimento(df):
 
 def menor_ordem_fornecimento(
     df: pd.DataFrame,
-    min_total: float = 1.0,                 # <<< piso mínimo da OF (R$)
+    min_total: float = 10.0,                 # <<< piso mínimo da OF (R$)
     excluir_itens_nao_positivos: bool = True # <<< ignora itens <= 0 ao somar
 ) -> pd.DataFrame:
     df = df.copy()
@@ -314,7 +314,7 @@ def maior_compra_item_unico(df):
 
 def menor_compra_item_unico(
     df: pd.DataFrame,
-    min_total: float = 1.0,                 # piso mínimo do total do item (R$)
+    min_total: float = 10.0,                 # piso mínimo do total do item (R$)
     excluir_itens_nao_positivos: bool = True # ignora itens com total <= 0
 ) -> pd.DataFrame:
     def _pick(cands, cols):
@@ -966,5 +966,6 @@ def tempos_medios_12m_5a(
         feriados=feriados,
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
+
 
 
