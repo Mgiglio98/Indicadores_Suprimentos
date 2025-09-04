@@ -649,29 +649,32 @@ with st.container(border=True):
         k2.metric("Fornecedores SP", _fmt(sp))
         k3.metric("Fornecedores SC", _fmt(sc))
 
+        # --- Listagens completas por UF ---
+        ufs_expanders = {
+            "RJ": "📍 Fornecedores aptos no RJ",
+            "SP": "📍 Fornecedores aptos em SP",
+            "SC": "📍 Fornecedores aptos em SC",
+        }
+        
+        for uf, label in ufs_expanders.items():
+            df_list = df_forn[
+                (df_forn["FORN_UF"].astype(str).str.upper() == uf)
+                & (df_forn["_APTO_BASICO_"] == True)
+            ].copy()
+        
+            with st.expander(label, expanded=False):
+                if not df_list.empty:
+                    cols_to_show = ["FORNECEDOR_CDG", "FORN_FANTASIA", "CATEGORIAS"]
+                    cols_validas = [col for col in cols_to_show if col in df_list.columns]
+        
+                    df_fmt = df_list[cols_validas].sort_values("FORN_FANTASIA").copy()
+                    df_fmt["FORNECEDOR_CDG"] = df_fmt["FORNECEDOR_CDG"].astype(str).str.zfill(6)  # se necessário
+                    st.dataframe(df_fmt, use_container_width=True, hide_index=True)
+                else:
+                    st.caption("Nenhum fornecedor apto encontrado para esta UF.")
+
     else:
         st.info("Sem dados para compor os contadores por local.")
-
-with st.expander("Listar fornecedores aptos por UF"):
-    ufs = ["RJ", "SP", "SC"]
-    for uf in ufs:
-        st.markdown(f"**UF: {uf}**")
-        df_list = df_forn[
-            (df_forn["FORN_UF"].astype(str).str.upper() == uf)
-            & (df_forn["_APTO_BASICO_"] == True)
-        ].copy()
-
-        if not df_list.empty:
-            cols_to_show = ["FORNECEDOR_CDG", "FORN_FANTASIA", "CATEGORIAS"]  # ajuste conforme nomes reais
-            cols_validas = [col for col in cols_to_show if col in df_list.columns]
-
-            st.dataframe(
-                df_list[cols_validas].sort_values("FORN_FANTASIA"),
-                use_container_width=True,
-                hide_index=True,
-            )
-        else:
-            st.caption("Nenhum fornecedor apto encontrado para esta UF.")
         
 # ---------- Estilo ----------
 st.markdown("""
