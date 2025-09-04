@@ -346,7 +346,7 @@ with st.container(border=True):
     
     r2c1.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     r2c2.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
-    r2c3.metric("Tempo médio p/ gerar OF (12m, úteis)", f"{int(round(m12))} dias") if m12 is not None else "—")
+    r2c3.metric("Tempo médio p/ gerar OF (12m, úteis)", (f"{int(round(m12))} dias") if m12 is not None else "—")
     r2c4.metric("Tempo médio p/ gerar OF (5 anos, úteis)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
 
 # ---------- TOP fornecedores ----------
@@ -744,6 +744,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
