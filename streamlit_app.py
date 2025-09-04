@@ -186,6 +186,7 @@ try:
         .dropna(subset=["FORNECEDOR_CDG"])
         .drop_duplicates(subset=["FORNECEDOR_CDG"])
         .sort_values("FORNECEDOR_DESC")
+        [["FORNECEDOR_CDG", "FORNECEDOR_DESC"]]  # <-- seleciona só essas colunas
     )
 
     # OFs básicas do último ano
@@ -718,6 +719,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
