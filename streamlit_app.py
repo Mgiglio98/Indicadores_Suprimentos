@@ -176,17 +176,41 @@ df = df_erp.copy()
 
 # Geração do Excel com KPIs detalhados (Fornecedores últimos 3 anos + OFs básicas último ano)
 try:
-    # Fornecedores que venderam nos últimos 3 anos
-    data_limite = pd.to_datetime("today") - pd.DateOffset(years=3)
+    # 🔄 Igual à função do KPI
+    data_limite = pd.Timestamp.today() - pd.DateOffset(years=3)
     df_3anos = df.copy()
-    df_3anos["OF_DATA"] = pd.to_datetime(df_3anos["OF_DATA"], errors="coerce")
+    df_3anos["OF_DATA_DT"] = pd.to_datetime(df_3anos.get("OF_DATA"), errors="coerce")
+    df_3anos = df_3anos[df_3anos["OF_DATA_DT"] >= data_limite]
+    
+    # Filtro de valor total > 0, igual no KPI
+    if "PRCTTL_INSUMO" in df_3anos.columns:
+        v = pd.to_numeric(df_3anos["PRCTTL_INSUMO"], errors="coerce").fillna(0)
+        df_3anos = df_3anos[v > 0]
+    
+    # Coluna de fornecedor com os mesmos critérios
+    candidatos = [
+        "FORNECEDOR_CDG", "FORNECEDOR_ID", "COD_FORNECEDOR",
+        "FORN_CNPJ", "CNPJ", "PED_FORNECEDOR", "FORNECEDOR"
+    ]
+    col_forn = next((c for c in candidatos if c in df_3anos.columns), None)
+    if not col_forn:
+        raise KeyError(f"Não encontrei coluna de fornecedor entre: {candidatos}")
+    
+    # Limpeza dos dados
+    df_3anos[col_forn] = (
+        df_3anos[col_forn]
+        .astype("string")
+        .str.strip()
+        .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
+    )
 
+    # Deduplicar e manter nome (assumindo "FORNECEDOR_DESC" como nome fantasia)
     df_forn_3anos = (
-        df_3anos[df_3anos["OF_DATA"] >= data_limite]
-        .dropna(subset=["FORNECEDOR_CDG"])
-        .sort_values("OF_DATA", ascending=False)
-        .drop_duplicates(subset=["FORNECEDOR_CDG"])  # pega o mais recente por código
-        [["FORNECEDOR_CDG", "FORNECEDOR_DESC"]]  # mostra só essas colunas
+        df_3anos
+        .dropna(subset=[col_forn, "FORNECEDOR_DESC"])
+        .drop_duplicates(subset=[col_forn])
+        [[col_forn, "FORNECEDOR_DESC"]]
+        .rename(columns={col_forn: "FORNECEDOR_CDG"})
         .sort_values("FORNECEDOR_DESC")
     )
 
@@ -720,6 +744,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
