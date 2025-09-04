@@ -238,13 +238,13 @@ with st.container(border=False):
         )
     
     with c3:
-    st.download_button(
-        "📥 Baixar KPIs de Suprimentos",
-        data=data_kpi if data_kpi is not None else b"",
-        file_name=nome_arquivo_kpi,
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        disabled=(data_kpi is None),
-    )
+        st.download_button(
+            "📥 Baixar KPIs de Suprimentos",
+            data=data_kpi if data_kpi is not None else b"",
+            file_name=nome_arquivo_kpi,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            disabled=(data_kpi is None),
+        )
 
 # ---------- KPIs ----------
 with st.container(border=True):
@@ -718,6 +718,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
