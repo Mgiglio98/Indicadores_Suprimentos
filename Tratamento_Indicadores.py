@@ -117,6 +117,8 @@ def menor_ordem_fornecimento(
 ) -> pd.DataFrame:
     df = df.copy()
     df = df[df.get("INSUMO_CATEGORIA") != "CAÇAMBAS E RETIRADAS DE RESÍDUOS"]
+    df["QTD_PED"] = pd.to_numeric(df.get("QTD_PED"), errors="coerce")
+    df = df[df["QTD_PED"] >= 1]
     df["OF_DATA_DT"] = pd.to_datetime(df.get("OF_DATA"), errors="coerce")
     df["PRCTTL_INSUMO"] = pd.to_numeric(df.get("PRCTTL_INSUMO"), errors="coerce")
 
@@ -967,6 +969,7 @@ def tempos_medios_12m_5a(
         feriados=feriados,
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
+
 
 
 
