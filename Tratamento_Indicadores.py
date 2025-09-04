@@ -116,6 +116,7 @@ def menor_ordem_fornecimento(
     excluir_itens_nao_positivos: bool = True # <<< ignora itens <= 0 ao somar
 ) -> pd.DataFrame:
     df = df.copy()
+    df = df[df.get("INSUMO_CATEGORIA") != "CAÇAMBAS E RETIRADAS DE RESÍDUOS"]
     df["OF_DATA_DT"] = pd.to_datetime(df.get("OF_DATA"), errors="coerce")
     df["PRCTTL_INSUMO"] = pd.to_numeric(df.get("PRCTTL_INSUMO"), errors="coerce")
 
@@ -966,6 +967,7 @@ def tempos_medios_12m_5a(
         feriados=feriados,
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
+
 
 
 
