@@ -236,7 +236,7 @@ with st.container(border=False):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             disabled=(data2 is None),
         )
-    
+
     with c3:
         st.download_button(
             "📥 Baixar KPIs de Suprimentos",
@@ -245,7 +245,7 @@ with st.container(border=False):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             disabled=(data_kpi is None),
         )
-
+    
 # ---------- KPIs ----------
 with st.container(border=True):
     st.subheader("📊 Resumo")
@@ -718,6 +718,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
