@@ -631,6 +631,7 @@ with st.container(border=True):
 
     # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
     st.markdown("**Fornecedores aptos por UF**")
+    _ = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ", "SP", "SC"))
     df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
 
     if isinstance(df_res, pd.DataFrame) and not df_res.empty:
@@ -701,3 +702,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
