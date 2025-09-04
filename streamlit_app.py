@@ -651,6 +651,27 @@ with st.container(border=True):
 
     else:
         st.info("Sem dados para compor os contadores por local.")
+
+with st.expander("Listar fornecedores aptos por UF"):
+    ufs = ["RJ", "SP", "SC"]
+    for uf in ufs:
+        st.markdown(f"**UF: {uf}**")
+        df_list = df_forn[
+            (df_forn["FORN_UF"].astype(str).str.upper() == uf)
+            & (df_forn["_APTO_BASICO_"] == True)
+        ].copy()
+
+        if not df_list.empty:
+            cols_to_show = ["FORNECEDOR_CDG", "FORN_FANTASIA", "CATEGORIAS"]  # ajuste conforme nomes reais
+            cols_validas = [col for col in cols_to_show if col in df_list.columns]
+
+            st.dataframe(
+                df_list[cols_validas].sort_values("FORN_FANTASIA"),
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.caption("Nenhum fornecedor apto encontrado para esta UF.")
         
 # ---------- Estilo ----------
 st.markdown("""
@@ -677,11 +698,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
