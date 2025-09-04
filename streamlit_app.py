@@ -184,9 +184,10 @@ try:
     df_forn_3anos = (
         df_3anos[df_3anos["OF_DATA"] >= data_limite]
         .dropna(subset=["FORNECEDOR_CDG"])
-        .drop_duplicates(subset=["FORNECEDOR_CDG"])
+        .sort_values("OF_DATA", ascending=False)
+        .drop_duplicates(subset=["FORNECEDOR_CDG"])  # pega o mais recente por código
+        [["FORNECEDOR_CDG", "FORNECEDOR_DESC"]]  # mostra só essas colunas
         .sort_values("FORNECEDOR_DESC")
-        [["FORNECEDOR_CDG", "FORNECEDOR_DESC"]]  # <-- seleciona só essas colunas
     )
 
     # OFs básicas do último ano
@@ -719,6 +720,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
