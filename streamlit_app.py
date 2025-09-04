@@ -610,7 +610,7 @@ with st.container(border=True):
                     f"({int(r['ANO_INICIO'])}→{int(r['ANO_FIM'])})"
                 )
             st.caption(
-                "Maior crescimento desde 2015 (apenas categorias com vendas em todos os últimos 5 anos): "
+                "Categorias com maior crescimento ano a ano: "
                 + " | ".join(partes) + "."
             )
         else:
@@ -677,6 +677,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
