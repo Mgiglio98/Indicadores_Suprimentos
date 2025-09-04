@@ -174,6 +174,39 @@ df_erp = _load_df_erp()
 df_forn = _load_df_forn()
 df = df_erp.copy()
 
+# Geração do Excel com KPIs detalhados (Fornecedores últimos 3 anos + OFs básicas último ano)
+try:
+    # Fornecedores que venderam nos últimos 3 anos
+    data_limite = pd.to_datetime("today") - pd.DateOffset(years=3)
+    df_3anos = df.copy()
+    df_3anos["OF_DATA"] = pd.to_datetime(df_3anos["OF_DATA"], errors="coerce")
+
+    df_forn_3anos = (
+        df_3anos[df_3anos["OF_DATA"] >= data_limite]
+        .dropna(subset=["FORNECEDOR_CDG"])
+        .drop_duplicates(subset=["FORNECEDOR_CDG"])
+        .sort_values("FORNECEDOR_DESC")
+    )
+
+    # OFs básicas do último ano
+    _, df_of_basicas = percentual_ofs_basicas_ultimo_ano(df)
+
+    # Gera Excel com as duas abas
+    hoje_str = datetime.today().strftime("%Y-%m-%d")
+    nome_arquivo_kpi = f"KPIs_Suprimentos_{hoje_str}.xlsx"
+    path_kpi = Path(nome_arquivo_kpi)
+
+    with pd.ExcelWriter(path_kpi, engine="openpyxl") as writer:
+        df_forn_3anos.to_excel(writer, sheet_name="Fornecedores_3_anos", index=False)
+        df_of_basicas.to_excel(writer, sheet_name="OFs_Basicas_12m", index=False)
+
+    # Lê o conteúdo do arquivo para o botão de download
+    data_kpi = path_kpi.read_bytes() if path_kpi.exists() else None
+
+except Exception as e:
+    data_kpi = None
+    st.warning(f"Erro ao gerar o arquivo de KPIs: {e}")
+
 # ——— Bases (carimbo + downloads em um único container) ———
 info = _repo_files_info()
 
@@ -203,6 +236,15 @@ with st.container(border=False):
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             disabled=(data2 is None),
         )
+    
+    with c3:
+    st.download_button(
+        "📥 Baixar KPIs de Suprimentos",
+        data=data_kpi if data_kpi is not None else b"",
+        file_name=nome_arquivo_kpi,
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        disabled=(data_kpi is None),
+    )
 
 # ---------- KPIs ----------
 with st.container(border=True):
@@ -676,6 +718,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
