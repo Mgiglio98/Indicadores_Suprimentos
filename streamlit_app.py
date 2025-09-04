@@ -32,8 +32,6 @@ from Tratamento_Indicadores import (
     compras_atrasadas,
     tempo_medio_geracao_of,
     tempos_medios_12m_5a,
-    _split_tokens,
-    _set_categorias_basicos
 )
 
 from fornecedores_core import (
@@ -633,10 +631,6 @@ with st.container(border=True):
 
     # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
     st.markdown("**Fornecedores aptos por UF**")
-    df_forn["_APTO_BASICO_"] = df_forn["CATEGORIAS"].apply(lambda cel: any(
-        any(t in b or b in t for b in _set_categorias_basicos(df, "INSUMO_CATEGORIA"))
-        for t in _split_tokens(cel)
-    ) if pd.notna(cel) else False)
     df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
 
     if isinstance(df_res, pd.DataFrame) and not df_res.empty:
@@ -654,31 +648,6 @@ with st.container(border=True):
         k1.metric("Fornecedores RJ", _fmt(rj))
         k2.metric("Fornecedores SP", _fmt(sp))
         k3.metric("Fornecedores SC", _fmt(sc))
-
-        # --- Listagens completas por UF ---
-        ufs_expanders = {
-            "RJ": "📍 Fornecedores aptos no RJ",
-            "SP": "📍 Fornecedores aptos em SP",
-            "SC": "📍 Fornecedores aptos em SC",
-        }
-        
-        for uf, label in ufs_expanders.items():
-            df_list = df_forn[
-                (df_forn["FORN_UF"].astype(str).str.upper() == uf)
-                & (df_forn["_APTO_BASICO_"] == True)
-            ].copy()
-        
-            with st.expander(label, expanded=False):
-                if not df_list.empty:
-                    cols_to_show = ["FORNECEDOR_CDG", "FORN_FANTASIA", "CATEGORIAS"]
-                    cols_validas = [col for col in cols_to_show if col in df_list.columns]
-        
-                    df_fmt = df_list[cols_validas].sort_values("FORN_FANTASIA").copy()
-                    df_fmt["FORNECEDOR_CDG"] = df_fmt["FORNECEDOR_CDG"].astype(str).str.zfill(6)  # se necessário
-                    st.dataframe(df_fmt, use_container_width=True, hide_index=True)
-                else:
-                    st.caption("Nenhum fornecedor apto encontrado para esta UF.")
-
     else:
         st.info("Sem dados para compor os contadores por local.")
         
@@ -707,6 +676,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
