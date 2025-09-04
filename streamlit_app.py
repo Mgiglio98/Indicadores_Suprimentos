@@ -32,6 +32,8 @@ from Tratamento_Indicadores import (
     compras_atrasadas,
     tempo_medio_geracao_of,
     tempos_medios_12m_5a,
+    _split_tokens,
+    _set_categorias_basicos
 )
 
 from fornecedores_core import (
@@ -705,5 +707,6 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
