@@ -631,7 +631,10 @@ with st.container(border=True):
 
     # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
     st.markdown("**Fornecedores aptos por UF**")
-    _ = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ", "SP", "SC"))
+    df_forn["_APTO_BASICO_"] = df_forn["CATEGORIAS"].apply(lambda cel: any(
+        any(t in b or b in t for b in _set_categorias_basicos(df, "INSUMO_CATEGORIA"))
+        for t in _split_tokens(cel)
+    ) if pd.notna(cel) else False)
     df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
 
     if isinstance(df_res, pd.DataFrame) and not df_res.empty:
@@ -702,4 +705,5 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
