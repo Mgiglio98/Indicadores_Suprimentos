@@ -970,7 +970,66 @@ def tempos_medios_12m_5a(
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
 
+def quantidade_ofs_ate_300_2024_2025(
+    df: pd.DataFrame,
+    limite: float = 300.0,
+    anos: tuple[int, ...] = (2024, 2025),
+    excluir_itens_nao_positivos: bool = True,  # True = ignora linhas com total <= 0
+) -> tuple[dict, pd.DataFrame]:
+    """
+    Conta OFs distintas com valor total < limite nos anos especificados (padrão: 2024 e 2025).
 
+    Retorna:
+      - resumo (dict): {"2024": X, "2025": Y, "TOTAL_2024_2025": Z}
+      - df_ofs (DataFrame): detalhes por OF (OF_CDG, ANO, VALOR_TOTAL_OF, OF_DATA, EMPRD_DESC, FORNECEDOR_DESC)
+    """
+    base = df.copy()
 
+    # Datas e valores
+    base["OF_DATA_DT"] = pd.to_datetime(base.get("OF_DATA"), errors="coerce")
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base.get("PRCTTL_INSUMO"), errors="coerce")
 
+    # Mantém linhas válidas
+    base = base.dropna(subset=["OF_DATA_DT", "OF_CDG"]).copy()
 
+    # Opcional: ignorar itens com total <= 0 para não "puxar" OF pra baixo artificialmente
+    if excluir_itens_nao_positivos:
+        base = base[base["PRCTTL_INSUMO"] > 0]
+
+    if base.empty:
+        return {str(a): 0 for a in anos} | {f"TOTAL_{'_'.join(map(str, anos))}": 0}, \
+               pd.DataFrame(columns=["OF_CDG","ANO","VALOR_TOTAL_OF","OF_DATA","EMPRD_DESC","FORNECEDOR_DESC"])
+
+    # Agrega por OF (soma dos itens e pega a primeira data da OF)
+    agg = (
+        base.groupby("OF_CDG", dropna=True)
+            .agg(
+                VALOR_TOTAL_OF=("PRCTTL_INSUMO", "sum"),
+                OF_DATA=("OF_DATA_DT", "min"),
+                EMPRD_DESC=("EMPRD_DESC", "first"),
+                FORNECEDOR_DESC=("FORNECEDOR_DESC", "first"),
+            )
+            .reset_index()
+    )
+
+    # Normaliza tipos
+    agg["VALOR_TOTAL_OF"] = pd.to_numeric(agg["VALOR_TOTAL_OF"], errors="coerce")
+    agg["ANO"] = agg["OF_DATA"].dt.year
+
+    # Filtro: anos alvo e total < limite (estritamente menor que 300, como pedido)
+    sel = agg[(agg["ANO"].isin(anos)) & (agg["VALOR_TOTAL_OF"] < float(limite))].copy()
+
+    if sel.empty:
+        return {str(a): 0 for a in anos} | {f"TOTAL_{'_'.join(map(str, anos))}": 0}, \
+               pd.DataFrame(columns=["OF_CDG","ANO","VALOR_TOTAL_OF","OF_DATA","EMPRD_DESC","FORNECEDOR_DESC"])
+
+    # Contagens por ano
+    counts_por_ano = sel["ANO"].value_counts().reindex(anos, fill_value=0).to_dict()
+    resumo = {str(a): int(counts_por_ano.get(a, 0)) for a in anos}
+    resumo[f"TOTAL_{'_'.join(map(str, anos))}"] = int(len(sel))
+
+    # Ajustes finais de output
+    sel["VALOR_TOTAL_OF"] = sel["VALOR_TOTAL_OF"].round(2)
+    sel = sel.sort_values(["ANO", "VALOR_TOTAL_OF", "OF_CDG"]).reset_index(drop=True)
+
+    return resumo, sel[["OF_CDG","ANO","VALOR_TOTAL_OF","OF_DATA","EMPRD_DESC","FORNECEDOR_DESC"]]
