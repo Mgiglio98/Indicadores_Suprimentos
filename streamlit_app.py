@@ -349,15 +349,15 @@ with st.container(border=True):
     r1c3.metric("Fornecedores cadastrados", f"{total_cad}" if total_cad is not None else "—")
     r1c4.metric("Fornecedores nos últimos 3 anos", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
     r1c5.metric("Cadastrados no último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
-    r1c6.metric("OFs < R$ 300 em 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
+    r2c1.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     
     # Linha 2 centralizada (4 KPIs)
     spacer1, r2c1, r2c2, r2c3, r2c4, r2c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
 
-    r2c1.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     r2c2.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
     r2c3.metric("Tempo médio p/ gerar OF (12m, úteis)", (f"{int(round(m12))} dias") if m12 is not None else "—")
     r2c4.metric("Tempo médio p/ gerar OF (5 anos, úteis)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
+    r1c6.metric("OFs < R$ 300 em 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
     r2c5.metric("OFs < R$ 300 em 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
 
 # ---------- TOP fornecedores ----------
@@ -755,6 +755,7 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
