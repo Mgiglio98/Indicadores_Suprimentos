@@ -34,7 +34,8 @@ from Tratamento_Indicadores import (
     tempos_medios_12m_5a,
     quantidade_ofs_ate_300_2024_2025,
     requisicoes_ofs_por_mes,
-    media_requisicoes_por_empreendimento_mes
+    media_requisicoes_por_empreendimento_mes,
+    tempo_medio_req_para_of_por_mes
 )
 
 from fornecedores_core import (
@@ -783,6 +784,35 @@ with st.container(border=True):
                 )
     else:
         st.info("Sem dados de requisições para 2025.")
+
+with st.container(border=True):
+    st.subheader("⏱️ Tempo médio REQ → OF — 2025")
+
+    df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
+    if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
+        chart_tempo = (
+            alt.Chart(df_tempo)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)"),
+                tooltip=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"]
+            )
+            .properties(height=300)
+        )
+        st.altair_chart(chart_tempo, use_container_width=True)
+
+        # Comentário: meses com mais de X% de OFs acima do SLA
+        for _, row in df_tempo.iterrows():
+            total = row["TOTAL_OFS"]
+            acima = row["ULTRAPASSARAM_SLA"]
+            if acima > 0:
+                perc = (acima / total * 100) if total else 0
+                st.markdown(
+                    f"⚠️ **{row['ANO_MES']}** — {acima}/{total} OFs ({perc:.1f}%) ultrapassaram o SLA de 3 dias úteis."
+                )
+    else:
+        st.info("Sem dados de REQ → OF para 2025.")
         
 # ---------- Estilo ----------
 st.markdown("""
