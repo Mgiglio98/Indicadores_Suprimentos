@@ -1085,3 +1085,51 @@ def requisicoes_ofs_por_mes(
     df_mes["OFS"] = df_mes["OFS"].astype(int)
 
     return df_mes.sort_values("ANO_MES").reset_index(drop=True)
+
+def media_requisicoes_por_empreendimento_mes(
+    df: pd.DataFrame,
+    ano: int = 2025,
+    col_req: str = "REQ_CDG",
+    col_empr: str = "EMPRD",
+    col_req_data: str = "REQ_DATA",
+    limite_top: int = 4
+) -> pd.DataFrame:
+    """
+    Calcula a média mensal de requisições por empreendimento e lista os empreendimentos que tiveram
+    mais de `limite_top` requisições no mês.
+    """
+    base = df.copy()
+    base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
+    base = base[base["REQ_DATA_DT"].dt.year == ano].copy()
+    if base.empty:
+        return pd.DataFrame(columns=["ANO_MES","TOTAL_REQ","EMPREENDIMENTOS","MEDIA_REQ_POR_EMPR","TOP_EMPREENDIMENTOS"])
+
+    # Deduplicação para contar REQ corretamente
+    base = base.dropna(subset=["REQ_DATA_DT", col_req, col_empr])
+    base = base.drop_duplicates(subset=[col_req, col_empr])
+    base["ANO_MES"] = base["REQ_DATA_DT"].dt.to_period("M")
+
+    # Contagem total de REQ e empreendimentos distintos
+    req_counts = base.groupby("ANO_MES")[col_req].count().reset_index(name="TOTAL_REQ")
+    empr_counts = base.groupby("ANO_MES")[col_empr].nunique().reset_index(name="EMPREENDIMENTOS")
+
+    # Identificação dos top empreendimentos
+    top_por_mes = (
+        base.groupby(["ANO_MES", col_empr])[col_req]
+        .count()
+        .reset_index(name="QTD_REQ")
+    )
+    top_por_mes = top_por_mes[top_por_mes["QTD_REQ"] > limite_top]
+
+    # Agrupa os empreendimentos que ultrapassaram o limite
+    top_agg = (
+        top_por_mes.groupby("ANO_MES")[col_empr]
+        .apply(lambda x: ", ".join(map(str, x)))
+        .reset_index(name="TOP_EMPREENDIMENTOS")
+    )
+
+    # Merge de tudo
+    df_out = req_counts.merge(empr_counts, on="ANO_MES", how="outer").merge(top_agg, on="ANO_MES", how="left")
+    df_out["MEDIA_REQ_POR_EMPR"] = df_out["TOTAL_REQ"] / df_out["EMPREENDIMENTOS"].replace({0: pd.NA})
+    df_out["ANO_MES"] = df_out["ANO_MES"].astype(str)
+    return df_out.sort_values("ANO_MES").reset_index(drop=True)
