@@ -33,7 +33,8 @@ from Tratamento_Indicadores import (
     tempo_medio_geracao_of,
     tempos_medios_12m_5a,
     quantidade_ofs_ate_300_2024_2025,
-    requisicoes_ofs_por_mes
+    requisicoes_ofs_por_mes,
+    media_requisicoes_por_empreendimento_mes
 )
 
 from fornecedores_core import (
@@ -754,6 +755,34 @@ with st.container(border=True):
         st.altair_chart(chart, use_container_width=True)
     else:
         st.info("Sem dados de REQ ou OF para 2025.")
+
+with st.container(border=True):
+    st.subheader("📈 Média de Requisições por Empreendimento — 2025")
+
+    df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025, limite_top=4)
+    if isinstance(df_media, pd.DataFrame) and not df_media.empty:
+        chart_media = (
+            alt.Chart(df_media)
+            .mark_line(point=True)
+            .encode(
+                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title="Média de REQ / Empreendimento"),
+                tooltip=["ANO_MES", "TOTAL_REQ", "EMPREENDIMENTOS", "MEDIA_REQ_POR_EMPR"]
+            )
+            .properties(height=300)
+        )
+
+        st.altair_chart(chart_media, use_container_width=True)
+
+        # Comentário: empreendimentos que requisitaram mais de 4 vezes no mês
+        for _, row in df_media.iterrows():
+            if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
+                st.markdown(
+                    f"🔎 **{row['ANO_MES']}** — Empreendimentos com mais de 4 requisições: "
+                    f"{row['TOP_EMPREENDIMENTOS']}"
+                )
+    else:
+        st.info("Sem dados de requisições para 2025.")
         
 # ---------- Estilo ----------
 st.markdown("""
