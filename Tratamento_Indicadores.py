@@ -1037,9 +1037,13 @@ def quantidade_ofs_ate_300_2024_2025(
 def requisicoes_ofs_por_mes(
     df: pd.DataFrame,
     ano: int = 2025,
+    col_req: str = "REQ_CDG",
+    col_of: str = "OF_CDG",
+    col_empr: str = "EMPRD",
 ) -> pd.DataFrame:
     """
     Retorna DataFrame com o total de REQUISIÇÕES e OFs por mês no ano especificado.
+    Usa (REQ_CDG, EMPRD) como chave para evitar duplicatas.
     Colunas de saída:
       ANO_MES | REQUISICOES | OFS
     """
@@ -1049,7 +1053,7 @@ def requisicoes_ofs_por_mes(
     base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
     base["OF_DATA_DT"]  = pd.to_datetime(base.get("OF_DATA"),  errors="coerce")
 
-    # Filtra linhas onde pelo menos uma data pertence ao ano solicitado
+    # Filtrar linhas que tenham datas no ano desejado
     base = base[
         (base["REQ_DATA_DT"].dt.year == ano) |
         (base["OF_DATA_DT"].dt.year == ano)
@@ -1058,26 +1062,34 @@ def requisicoes_ofs_por_mes(
     if base.empty:
         return pd.DataFrame(columns=["ANO_MES", "REQUISICOES", "OFS"])
 
-    # Agrupa por mês (period M)
-    base["MES_REQ"] = base["REQ_DATA_DT"].dt.to_period("M")
-    base["MES_OF"]  = base["OF_DATA_DT"].dt.to_period("M")
+    # --- Contagem de Requisições ---
+    df_req = base.dropna(subset=["REQ_DATA_DT", col_req, col_empr]).copy()
+    if not df_req.empty:
+        df_req = (
+            df_req.drop_duplicates(subset=[col_req, col_empr])
+            .assign(ANO_MES=df_req["REQ_DATA_DT"].dt.to_period("M"))
+            .groupby("ANO_MES")[col_req]
+            .count()
+            .reset_index(name="REQUISICOES")
+        )
+    else:
+        df_req = pd.DataFrame(columns=["ANO_MES", "REQUISICOES"])
 
-    req_counts = (
-        base.dropna(subset=["MES_REQ"])
-        .groupby("MES_REQ")["REQ_DATA_DT"]
-        .count()
-        .reset_index(name="REQUISICOES")
-        .rename(columns={"MES_REQ": "ANO_MES"}))
+    # --- Contagem de OFs ---
+    df_of = base.dropna(subset=["OF_DATA_DT", col_of]).copy()
+    if not df_of.empty:
+        df_of = (
+            df_of.drop_duplicates(subset=[col_of])
+            .assign(ANO_MES=df_of["OF_DATA_DT"].dt.to_period("M"))
+            .groupby("ANO_MES")[col_of]
+            .count()
+            .reset_index(name="OFS")
+        )
+    else:
+        df_of = pd.DataFrame(columns=["ANO_MES", "OFS"])
 
-    of_counts = (
-        base.dropna(subset=["MES_OF"])
-        .groupby("MES_OF")["OF_DATA_DT"]
-        .count()
-        .reset_index(name="OFS")
-        .rename(columns={"MES_OF": "ANO_MES"}))
-
-    # Mescla e preenche zeros
-    df_mes = pd.merge(req_counts, of_counts, on="ANO_MES", how="outer").fillna(0)
+    # Mesclar e preencher meses ausentes
+    df_mes = pd.merge(df_req, df_of, on="ANO_MES", how="outer").fillna(0)
     df_mes["ANO_MES"] = df_mes["ANO_MES"].astype(str)
     df_mes["REQUISICOES"] = df_mes["REQUISICOES"].astype(int)
     df_mes["OFS"] = df_mes["OFS"].astype(int)
