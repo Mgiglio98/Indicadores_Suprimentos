@@ -33,6 +33,7 @@ from Tratamento_Indicadores import (
     tempo_medio_geracao_of,
     tempos_medios_12m_5a,
     quantidade_ofs_ate_300_2024_2025,
+    requisicoes_ofs_por_mes
 )
 
 from fornecedores_core import (
@@ -729,6 +730,30 @@ with st.container(border=True):
         k3.metric("Fornecedores SC", _fmt(sc))
     else:
         st.info("Sem dados para compor os contadores por local.")
+
+with st.container(border=True):
+    st.subheader("📅 Requisições e OFs — 2025")
+
+    df_mes = _safe(requisicoes_ofs_por_mes, df, ano=2025)
+    if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
+        df_long = df_mes.melt(
+            id_vars="ANO_MES",
+            value_vars=["REQUISICOES", "OFS"],
+            var_name="TIPO",
+            value_name="QTD")
+
+        chart = (
+            alt.Chart(df_long)
+            .mark_bar()
+            .encode(
+                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("QTD:Q", title="Quantidade"),
+                color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10")),)
+            .properties(height=300))
+
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.info("Sem dados de REQ ou OF para 2025.")
         
 # ---------- Estilo ----------
 st.markdown("""
@@ -755,19 +780,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
