@@ -1033,3 +1033,53 @@ def quantidade_ofs_ate_300_2024_2025(
     sel = sel.sort_values(["ANO", "VALOR_TOTAL_OF", "OF_CDG"]).reset_index(drop=True)
 
     return resumo, sel[["OF_CDG","ANO","VALOR_TOTAL_OF","OF_DATA","EMPRD_DESC","FORNECEDOR_DESC"]]
+
+def requisicoes_ofs_por_mes(
+    df: pd.DataFrame,
+    ano: int = 2025,
+) -> pd.DataFrame:
+    """
+    Retorna DataFrame com o total de REQUISIÇÕES e OFs por mês no ano especificado.
+    Colunas de saída:
+      ANO_MES | REQUISICOES | OFS
+    """
+    base = df.copy()
+
+    # Garantir datetime
+    base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
+    base["OF_DATA_DT"]  = pd.to_datetime(base.get("OF_DATA"),  errors="coerce")
+
+    # Filtra linhas onde pelo menos uma data pertence ao ano solicitado
+    base = base[
+        (base["REQ_DATA_DT"].dt.year == ano) |
+        (base["OF_DATA_DT"].dt.year == ano)
+    ].copy()
+
+    if base.empty:
+        return pd.DataFrame(columns=["ANO_MES", "REQUISICOES", "OFS"])
+
+    # Agrupa por mês (period M)
+    base["MES_REQ"] = base["REQ_DATA_DT"].dt.to_period("M")
+    base["MES_OF"]  = base["OF_DATA_DT"].dt.to_period("M")
+
+    req_counts = (
+        base.dropna(subset=["MES_REQ"])
+        .groupby("MES_REQ")["REQ_DATA_DT"]
+        .count()
+        .reset_index(name="REQUISICOES")
+        .rename(columns={"MES_REQ": "ANO_MES"}))
+
+    of_counts = (
+        base.dropna(subset=["MES_OF"])
+        .groupby("MES_OF")["OF_DATA_DT"]
+        .count()
+        .reset_index(name="OFS")
+        .rename(columns={"MES_OF": "ANO_MES"}))
+
+    # Mescla e preenche zeros
+    df_mes = pd.merge(req_counts, of_counts, on="ANO_MES", how="outer").fillna(0)
+    df_mes["ANO_MES"] = df_mes["ANO_MES"].astype(str)
+    df_mes["REQUISICOES"] = df_mes["REQUISICOES"].astype(int)
+    df_mes["OFS"] = df_mes["OFS"].astype(int)
+
+    return df_mes.sort_values("ANO_MES").reset_index(drop=True)
