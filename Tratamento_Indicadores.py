@@ -1133,3 +1133,68 @@ def media_requisicoes_por_empreendimento_mes(
     df_out["MEDIA_REQ_POR_EMPR"] = df_out["TOTAL_REQ"] / df_out["EMPREENDIMENTOS"].replace({0: pd.NA})
     df_out["ANO_MES"] = df_out["ANO_MES"].astype(str)
     return df_out.sort_values("ANO_MES").reset_index(drop=True)
+
+def tempo_medio_req_para_of_por_mes(
+    df: pd.DataFrame,
+    ano: int = 2025,
+    dias_uteis_sla: int = 3,
+    col_req: str = "REQ_CDG",
+    col_req_data: str = "REQ_DATA",
+    col_of_data: str = "OF_DATA"
+) -> pd.DataFrame:
+    """
+    Calcula o tempo médio (em dias úteis) entre REQ_DATA e OF_DATA, por mês de 2025.
+    Também conta quantas ultrapassaram o SLA (dias_uteis_sla).
+
+    Retorna DataFrame com:
+      ANO_MES | MEDIA_DIAS_UTEIS | TOTAL_OFS | ULTRAPASSARAM_SLA
+    """
+    base = df.copy()
+    base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
+    base["OF_DATA_DT"] = pd.to_datetime(base.get(col_of_data), errors="coerce")
+
+    # Manter apenas linhas válidas e do ano desejado (considerando OF_DATA para agrupar por mês)
+    base = base.dropna(subset=["REQ_DATA_DT", "OF_DATA_DT"]).copy()
+    base = base[base["OF_DATA_DT"].dt.year == ano]
+
+    if base.empty:
+        return pd.DataFrame(columns=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"])
+
+    # Agregar por OF para não duplicar cálculo
+    agg = (
+        base.groupby("OF_CDG", dropna=True)
+        .agg(
+            REQ_DATA_MIN=("REQ_DATA_DT", "min"),
+            OF_DATA_REF=("OF_DATA_DT", "min")
+        )
+        .reset_index()
+    )
+
+    # Remove OFs inconsistentes
+    agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
+    if agg.empty:
+        return pd.DataFrame(columns=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"])
+
+    # Calcula dias úteis
+    start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
+    end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
+    weekmask = "1111100"  # seg..sex
+    dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask)
+
+    agg["DIAS_UTEIS"] = dias_uteis.astype(int)
+    agg["ANO_MES"] = agg["OF_DATA_REF"].dt.to_period("M")
+
+    # Agrupa por mês
+    res = (
+        agg.groupby("ANO_MES")
+        .agg(
+            MEDIA_DIAS_UTEIS=("DIAS_UTEIS", "mean"),
+            TOTAL_OFS=("OF_CDG", "count"),
+            ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: (x > dias_uteis_sla).sum())
+        )
+        .reset_index()
+    )
+
+    res["MEDIA_DIAS_UTEIS"] = res["MEDIA_DIAS_UTEIS"].round(2)
+    res["ANO_MES"] = res["ANO_MES"].astype(str)
+    return res.sort_values("ANO_MES").reset_index(drop=True)
