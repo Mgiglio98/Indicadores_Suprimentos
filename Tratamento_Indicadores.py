@@ -1219,3 +1219,43 @@ def total_ofs_por_ano(
         .reindex(anos, fill_value=0)
         .to_dict())
     return {str(k): int(v) for k, v in contagens.items()}
+
+def total_ofs_basico_vs_nao(
+    df: pd.DataFrame,
+    ano: int = 2025,
+    mes: int = 8,
+    col_tipo: str = "TIPO_MATERIAL",
+    col_of: str = "OF_CDG",
+    col_data: str = "OF_DATA"
+) -> dict:
+    """
+    Conta OFs distintas no mês/ano informado, separando:
+    - OFs que tiveram ao menos 1 item básico
+    - OFs que não tiveram nenhum item básico
+
+    Retorna dict com {"BÁSICO": X, "ESPECÍFICO": Y, "TOTAL": Z}
+    """
+    base = df.copy()
+    base["OF_DATA_DT"] = pd.to_datetime(base.get(col_data), errors="coerce")
+    base = base.dropna(subset=["OF_DATA_DT", col_of, col_tipo])
+
+    # Filtra pelo mês/ano
+    base = base[(base["OF_DATA_DT"].dt.year == ano) & (base["OF_DATA_DT"].dt.month == mes)]
+    if base.empty:
+        return {"BÁSICO": 0, "ESPECÍFICO": 0, "TOTAL": 0}
+
+    # Cria um agrupamento por OF → se há pelo menos 1 item básico
+    agrupado = (
+        base.groupby(col_of)[col_tipo]
+        .apply(lambda x: "BÁSICO" if "BÁSICO" in set(x) else "ESPECÍFICO")
+        .reset_index(name="TIPO_OF")
+    )
+
+    total_basico = (agrupado["TIPO_OF"] == "BÁSICO").sum()
+    total_especifico = (agrupado["TIPO_OF"] == "ESPECÍFICO").sum()
+
+    return {
+        "BÁSICO": int(total_basico),
+        "ESPECÍFICO": int(total_especifico),
+        "TOTAL": int(len(agrupado))
+    }
