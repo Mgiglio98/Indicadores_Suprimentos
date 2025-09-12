@@ -804,9 +804,10 @@ with st.container(border=True):
         for _, row in df_media.iterrows():
             if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
                 st.markdown(
-                    f"🔎 **{row['ANO_MES']}** — Obras com mais de 4 requisições: "
-                    f"{row['TOP_EMPREENDIMENTOS']}"
+                    f"🔎 **{row['ANO_MES']}** — Obras com mais de 4 requisições: {row['TOP_EMPREENDIMENTOS']}"
                 )
+        
+                        )
     else:
         st.info("Sem dados de requisições para 2025.")
 
