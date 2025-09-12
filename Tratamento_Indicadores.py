@@ -1190,11 +1190,32 @@ def tempo_medio_req_para_of_por_mes(
         .agg(
             MEDIA_DIAS_UTEIS=("DIAS_UTEIS", "mean"),
             TOTAL_OFS=("OF_CDG", "count"),
-            ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: (x > dias_uteis_sla).sum())
-        )
-        .reset_index()
-    )
+            ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: (x > dias_uteis_sla).sum()))
+        .reset_index())
 
     res["MEDIA_DIAS_UTEIS"] = res["MEDIA_DIAS_UTEIS"].round(2)
     res["ANO_MES"] = res["ANO_MES"].astype(str)
     return res.sort_values("ANO_MES").reset_index(drop=True)
+
+def total_ofs_por_ano(
+    df: pd.DataFrame,
+    anos: tuple[int, ...] = (2024, 2025),
+    col_of: str = "OF_CDG",
+    col_of_data: str = "OF_DATA"
+) -> dict:
+    """
+    Conta OFs distintas para os anos informados.
+    Retorna dict com {"2024": X, "2025": Y}
+    """
+    base = df.copy()
+    base["OF_DATA_DT"] = pd.to_datetime(base.get(col_of_data), errors="coerce")
+    base = base.dropna(subset=["OF_DATA_DT", col_of])
+    base["ANO"] = base["OF_DATA_DT"].dt.year
+
+    # conta OFs distintas por ano
+    contagens = (
+        base.groupby("ANO")[col_of]
+        .nunique()
+        .reindex(anos, fill_value=0)
+        .to_dict())
+    return {str(k): int(v) for k, v in contagens.items()}
