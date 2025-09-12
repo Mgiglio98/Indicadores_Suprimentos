@@ -356,22 +356,22 @@ with st.container(border=True):
    # Linha 1 centralizada (5 KPIs)
     spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, r1c6, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 2, 1])
 
-    r1c1.metric("Valor médio por OF", _format_brl(round(media_of, 2)) if media_of is not None else "—")
-    r1c2.metric("% de OFs Básicas no último ano", _format_pct_br(pct_bas) if pct_bas is not None else "—")
-    r1c3.metric("Fornecedores cadastrados", f"{total_cad}" if total_cad is not None else "—")
-    r1c4.metric("Fornecedores nos últimos 3 anos", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
-    r1c5.metric("Cadastrados no último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
-    r1c6.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
+    r1c1.metric("Valor médio OF", _format_brl(round(media_of, 2)) if media_of is not None else "—")
+    r1c2.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
+    r1c3.metric("% de OFs Básicas (12m)", _format_pct_br(pct_bas) if pct_bas is not None else "—")
+    r1c4.metric("Fornecedores Cadastrados", f"{total_cad}" if total_cad is not None else "—")
+    r1c5.metric("Fornecedores utilizados (3 anos)", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
+    r1c6.metric("Cadastrados último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
     
     # Linha 2 centralizada (4 KPIs)
     spacer1, r2c1, r2c2, r2c3, r2c4, r2c5, r2c6, r2c7, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 2, 2, 1])
 
     r2c1.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
-    r2c2.metric("Tempo médio p/ gerar OF (12m, úteis)", (f"{int(round(m12))} dias") if m12 is not None else "—")
-    r2c3.metric("Tempo médio p/ gerar OF (5 anos, úteis)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
-    r2c4.metric("OFs < R$ 300 em 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
-    r2c5.metric("OFs < R$ 300 em 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
-    r2c6.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
+    r2c2.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
+    r2c3.metric("Tempo médio OF (5 anos)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
+    r2c4.metric("OFs < R$ 300 - 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
+    r2c5.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
+    r2c6.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
     r2c7.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
 
 with st.container(border=True):
@@ -813,7 +813,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
-    st.subheader("⏱️ Tempo médio REQ → OF — 2025")
+    st.subheader("⏱️ Tempo médio em dias: REQ → OF — 2025")
 
     df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
