@@ -806,8 +806,7 @@ with st.container(border=True):
                 st.markdown(
                     f"🔎 **{row['ANO_MES']}** — Obras com mais de 4 requisições: {row['TOP_EMPREENDIMENTOS']}"
                 )
-        
-                        )
+
     else:
         st.info("Sem dados de requisições para 2025.")
 
