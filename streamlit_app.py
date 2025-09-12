@@ -834,9 +834,9 @@ with st.container(border=True):
             acima = row["ULTRAPASSARAM_SLA"]
             if acima > 0:
                 perc = (acima / total * 100) if total else 0
-                st.markdown(
-                    f"⚠️ **{row['ANO_MES']}** — {acima}/{total} OFs ({perc:.1f}%) ultrapassaram o SLA de 3 dias úteis."
-                )
+                #st.markdown(
+                    #f"⚠️ **{row['ANO_MES']}** — {acima}/{total} OFs ({perc:.1f}%) ultrapassaram o SLA de 3 dias úteis."
+                #)
     else:
         st.info("Sem dados de REQ → OF para 2025.")
         
@@ -865,3 +865,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
