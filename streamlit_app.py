@@ -36,7 +36,8 @@ from Tratamento_Indicadores import (
     requisicoes_ofs_por_mes,
     media_requisicoes_por_empreendimento_mes,
     tempo_medio_req_para_of_por_mes,
-    total_ofs_por_ano
+    total_ofs_por_ano,
+    total_ofs_basico_vs_nao
 )
 
 from fornecedores_core import (
@@ -372,6 +373,18 @@ with st.container(border=True):
     r2c5.metric("OFs < R$ 300 em 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
     r2c6.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
     r2c7.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
+
+with st.container(border=True):
+    st.subheader("📦 OFs Básicas vs Não Básicas — Agosto/2025")
+
+    resumo_basico = _safe(total_ofs_basico_vs_nao, df, ano=2025, mes=8)
+    if resumo_basico and resumo_basico["TOTAL"] > 0:
+        c1, c2, c3 = st.columns(3)
+        c1.metric("OFs com Básicos", _format_int_br(resumo_basico["BÁSICO"]))
+        c2.metric("OFs sem Básicos", _format_int_br(resumo_basico["ESPECÍFICO"]))
+        c3.metric("Total no mês", _format_int_br(resumo_basico["TOTAL"]))
+    else:
+        st.info("Nenhuma OF encontrada para Agosto/2025.")
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
@@ -849,4 +862,5 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
