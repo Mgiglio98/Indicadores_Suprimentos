@@ -756,6 +756,7 @@ with st.container(border=True):
     else:
         st.info("Sem dados para compor os contadores por local.")
 
+# ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
     st.subheader("📅 Requisições e OFs — 2025")
 
@@ -765,40 +766,41 @@ with st.container(border=True):
             id_vars="ANO_MES",
             value_vars=["REQUISICOES", "OFS"],
             var_name="TIPO",
-            value_name="QTD")
+            value_name="QTD"
+        )
 
-        chart = (
-            alt.Chart(df_long)
-            .mark_bar()
-            .encode(
-                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("QTD:Q", title="Quantidade"),
-                color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10")),)
-            .properties(height=300))
+        base = alt.Chart(df_long).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("QTD:Q", title=None, axis=None),  # remove eixo Y
+            color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10"))
+        )
 
-        st.altair_chart(chart, use_container_width=True)
+        bars = base.mark_bar()
+        labels = base.mark_text(dy=-5).encode(text="QTD:Q")  # rótulo acima da barra
+
+        st.altair_chart(bars + labels, use_container_width=True)
     else:
         st.info("Sem dados de REQ ou OF para 2025.")
 
+
+# ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
     st.subheader("📈 Média de Requisições por Empreendimento — 2025")
 
     df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025, limite_top=4)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
-        chart_media = (
-            alt.Chart(df_media)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title="Média de REQ / Empreendimento"),
-                tooltip=["ANO_MES", "TOTAL_REQ", "EMPREENDIMENTOS", "MEDIA_REQ_POR_EMPR"]
-            )
-            .properties(height=300)
+        base = alt.Chart(df_media).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title=None, axis=None),  # remove eixo Y
+            tooltip=["ANO_MES", "TOTAL_REQ", "EMPREENDIMENTOS", "MEDIA_REQ_POR_EMPR"]
         )
 
-        st.altair_chart(chart_media, use_container_width=True)
+        line = base.mark_line(point=True)
+        labels = base.mark_text(dy=-8).encode(text=alt.Text("MEDIA_REQ_POR_EMPR:Q", format=".2f"))
 
-        # Comentário: empreendimentos que requisitaram mais de 4 vezes no mês
+        st.altair_chart(line + labels, use_container_width=True)
+
+        # Comentário: empreendimentos com mais de 4 requisições
         for _, row in df_media.iterrows():
             if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
                 st.markdown(
@@ -808,32 +810,33 @@ with st.container(border=True):
     else:
         st.info("Sem dados de requisições para 2025.")
 
+
+# ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
     st.subheader("⏱️ Tempo médio REQ → OF — 2025")
 
     df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
-        chart_tempo = (
-            alt.Chart(df_tempo)
-            .mark_line(point=True)
-            .encode(
-                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)"),
-                tooltip=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"]
-            )
-            .properties(height=300)
+        base = alt.Chart(df_tempo).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title=None, axis=None),
+            tooltip=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"]
         )
-        st.altair_chart(chart_tempo, use_container_width=True)
 
-        # Comentário: meses com mais de X% de OFs acima do SLA
+        line = base.mark_line(point=True)
+        labels = base.mark_text(dy=-8).encode(text=alt.Text("MEDIA_DIAS_UTEIS:Q", format=".2f"))
+
+        st.altair_chart(line + labels, use_container_width=True)
+
+        # Comentário: meses com OFs acima do SLA
         for _, row in df_tempo.iterrows():
             total = row["TOTAL_OFS"]
             acima = row["ULTRAPASSARAM_SLA"]
             if acima > 0:
                 perc = (acima / total * 100) if total else 0
-                #st.markdown(
-                    #f"⚠️ **{row['ANO_MES']}** — {acima}/{total} OFs ({perc:.1f}%) ultrapassaram o SLA de 3 dias úteis."
-                #)
+                st.markdown(
+                    f"⚠️ **{row['ANO_MES']}** — {acima}/{total} OFs ({perc:.1f}%) ultrapassaram o SLA de 3 dias úteis."
+                )
     else:
         st.info("Sem dados de REQ → OF para 2025.")
         
@@ -862,6 +865,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
-
