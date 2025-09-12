@@ -804,7 +804,7 @@ with st.container(border=True):
         for _, row in df_media.iterrows():
             if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
                 st.markdown(
-                    f"🔎 **{row['ANO_MES']}** — Empreendimentos com mais de 4 requisições: "
+                    f"🔎 **{row['ANO_MES']}** — Obras com mais de 4 requisições: "
                     f"{row['TOP_EMPREENDIMENTOS']}"
                 )
     else:
@@ -865,4 +865,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
