@@ -769,19 +769,20 @@ with st.container(border=True):
             value_name="QTD"
         )
 
-        base = alt.Chart(df_long).encode(
-            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("QTD:Q", title=None, axis=None),  # remove eixo Y
-            color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10"))
+        chart = (
+            alt.Chart(df_long)
+            .mark_bar()
+            .encode(
+                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("QTD:Q", title="Quantidade"),
+                color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10")),
+            )
+            .properties(height=300)
         )
 
-        bars = base.mark_bar()
-        labels = base.mark_text(dy=-5).encode(text="QTD:Q")  # rótulo acima da barra
-
-        st.altair_chart(bars + labels, use_container_width=True)
+        st.altair_chart(chart, use_container_width=True)
     else:
         st.info("Sem dados de REQ ou OF para 2025.")
-
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
