@@ -1097,7 +1097,7 @@ def media_requisicoes_por_empreendimento_mes(
 ) -> pd.DataFrame:
     """
     Calcula a média mensal de requisições por empreendimento e lista empreendimentos
-    que tiveram mais de `limite_top` requisições no mês, incluindo o nome resumido da obra.
+    que tiveram mais de `limite_top` requisições no mês, no formato "COD (NOME)".
     """
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
@@ -1109,17 +1109,17 @@ def media_requisicoes_por_empreendimento_mes(
     base = base.drop_duplicates(subset=[col_req, col_empr])
     base["ANO_MES"] = base["REQ_DATA_DT"].dt.to_period("M")
 
-    # Se houver coluna de descrição de empreendimento, usa ela
+    # Garantir descrição de empreendimento
     if col_empr_desc in base.columns:
         base[col_empr_desc] = base[col_empr_desc].astype(str)
     else:
-        base[col_empr_desc] = base[col_empr].astype(str)  # fallback para código
+        base[col_empr_desc] = base[col_empr].astype(str)
 
     # Contagem geral
     req_counts = base.groupby("ANO_MES")[col_req].count().reset_index(name="TOTAL_REQ")
     empr_counts = base.groupby("ANO_MES")[col_empr].nunique().reset_index(name="EMPREENDIMENTOS")
 
-    # Identificação dos top empreendimentos (mais de limite_top REQs)
+    # Identificação dos top empreendimentos
     top_por_mes = (
         base.groupby(["ANO_MES", col_empr, col_empr_desc])[col_req]
         .count()
@@ -1127,10 +1127,13 @@ def media_requisicoes_por_empreendimento_mes(
     )
     top_por_mes = top_por_mes[top_por_mes["QTD_REQ"] > limite_top]
 
-    # Monta string com nome resumido (primeira palavra)
+    # Gera string "COD (NOME_CURTO)"
     top_por_mes["NOME_CURTO"] = top_por_mes[col_empr_desc].str.split().str[0]
+    top_por_mes["COD_NOME"] = top_por_mes[col_empr].astype(str) + " (" + top_por_mes["NOME_CURTO"] + ")"
+
+    # Agrupa por mês juntando os códigos/nomes
     top_agg = (
-        top_por_mes.groupby("ANO_MES")["NOME_CURTO"]
+        top_por_mes.groupby("ANO_MES")["COD_NOME"]
         .apply(lambda x: ", ".join(sorted(set(x))))
         .reset_index(name="TOP_EMPREENDIMENTOS")
     )
@@ -1265,4 +1268,5 @@ def total_ofs_basico_vs_nao(
         "ESPECÍFICO": int(total_especifico),
         "TOTAL": int(len(agrupado))
     }
+
 
