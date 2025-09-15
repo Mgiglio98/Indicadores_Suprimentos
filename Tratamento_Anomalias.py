@@ -137,7 +137,7 @@ def grafico_anomalias_por_mes_com_comentarios(df: pd.DataFrame):
     )
 
     chart = alt.layer(bars, labels).properties(
-        title="Total de Anomalias por Mês",
+        #title="Total de Anomalias por Mês",
         height=300
     )
 
@@ -153,3 +153,4 @@ def grafico_anomalias_por_mes_com_comentarios(df: pd.DataFrame):
         comentarios.append(f"🔎 **{mes}** — Obras com anomalias: {lista}")
 
     return chart, comentarios
+
