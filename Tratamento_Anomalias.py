@@ -1,4 +1,5 @@
 # Tratamento_Anomalias.py
+import streamlit as st
 import pandas as pd
 import altair as alt
 from pathlib import Path
@@ -67,3 +68,4 @@ def grafico_anomalias_por_mes_com_comentarios(df):
             st.markdown(f"🔎 **{mes}** — Obras com anomalias: {lista}")
         else:
             st.markdown(f"🔎 **{mes}** — Sem anomalias registradas.")
+
