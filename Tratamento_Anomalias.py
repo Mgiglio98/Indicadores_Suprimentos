@@ -8,34 +8,36 @@ def carregar_anomalias():
     csv_path = base_dir / "Controle_Anomalias(Controle).csv"
     xlsx_path = base_dir / "Empreendimentos.xlsx"
 
-    # Lê CSV separando corretamente
+    # --- CSV de anomalias ---
     df = pd.read_csv(csv_path, sep=";")
+    if "Empreendimento" not in df.columns or "Data Anomalia" not in df.columns:
+        raise KeyError(f"Colunas esperadas ('Empreendimento', 'Data Anomalia') não encontradas. Encontradas: {list(df.columns)}")
 
-    # Confirma se a coluna existe
-    if "Empreendimento" not in df.columns:
-        raise KeyError(f"Coluna 'Empreendimento' não encontrada. Colunas disponíveis: {list(df.columns)}")
-
+    df["Empreendimento"] = df["Empreendimento"].astype(str).str.strip()
     df["Data Anomalia"] = pd.to_datetime(df["Data Anomalia"], dayfirst=True, errors="coerce")
-    df["Empreendimento"] = df["Empreendimento"].astype(str)
 
+    # --- Excel de empreendimentos ---
     df_emp = pd.read_excel(xlsx_path)
     if "EMPREENDIMENTO" not in df_emp.columns:
-        raise KeyError(f"Coluna 'EMPREENDIMENTO' não encontrada no Excel. Colunas disponíveis: {list(df_emp.columns)}")
+        raise KeyError(f"Coluna 'EMPREENDIMENTO' não encontrada no Excel. Colunas: {list(df_emp.columns)}")
 
-    df_emp["EMPREENDIMENTO"] = df_emp["EMPREENDIMENTO"].astype(str)
+    # Quebra o texto "2316 - MARCO" em código e nome
+    df_emp["EMP_CODIGO"] = df_emp["EMPREENDIMENTO"].astype(str).str.split("-").str[0].str.strip()
+    df_emp["NOME_CURTO"] = df_emp["EMPREENDIMENTO"].astype(str).str.split("-").str[1].str.strip().str.split().str[0]
 
-    # Faz o merge
-    df_merged = df.merge(df_emp, how="left", left_on="Empreendimento", right_on="EMPREENDIMENTO")
+    # Merge usando EMP_CODIGO
+    df_merged = df.merge(df_emp, how="left", left_on="Empreendimento", right_on="EMP_CODIGO")
     return df_merged
-
+    
 def grafico_anomalias_por_mes_com_comentarios(df):
     if df.empty:
-        return None, []
+        st.info("Sem dados de anomalias.")
+        return
 
-    df = df.copy()
     df["ANO_MES"] = df["Data Anomalia"].dt.to_period("M").astype(str)
     contagem = df.groupby("ANO_MES").size().reset_index(name="TOTAL_ANOMALIAS")
 
+    # Gráfico de barras
     chart = (
         alt.Chart(contagem)
         .mark_bar()
@@ -47,20 +49,21 @@ def grafico_anomalias_por_mes_com_comentarios(df):
         .properties(title="Total de Anomalias por Mês", height=300)
     )
 
-    # Gera os comentários para exibir no Streamlit
-    comentarios = []
+    st.altair_chart(chart, use_container_width=True)
+
+    # Comentários com nomes curtos
+    st.markdown("### 📝 Detalhes por mês")
     for mes in contagem["ANO_MES"]:
         empreendimentos_mes = (
-            df.loc[df["ANO_MES"] == mes, "Empreendimento"]
+            df.loc[df["ANO_MES"] == mes, ["Empreendimento", "NOME_CURTO"]]
             .dropna()
-            .astype(str)
-            .unique()
+            .drop_duplicates()
         )
+
         if len(empreendimentos_mes) > 0:
-            lista = ", ".join(sorted(empreendimentos_mes))
-            comentarios.append(f"🔎 **{mes}** — Obras com anomalias: {lista}")
+            lista = ", ".join(
+                empreendimentos_mes.apply(lambda x: f"{x['Empreendimento']} ({x['NOME_CURTO']})", axis=1)
+            )
+            st.markdown(f"🔎 **{mes}** — Obras com anomalias: {lista}")
         else:
-            comentarios.append(f"🔎 **{mes}** — Sem anomalias registradas.")
-
-    return chart, comentarios
-
+            st.markdown(f"🔎 **{mes}** — Sem anomalias registradas.")
