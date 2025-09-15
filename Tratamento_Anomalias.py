@@ -88,15 +88,21 @@ def carregar_anomalias(
 
 # --- gráfico + comentários -------------------------------------------------
 def grafico_anomalias_por_mes_com_comentarios(df: pd.DataFrame):
-    """
-    Retorna (alt.Chart, list[str]) — gráfico de barras verticais e comentários
-    listando os empreendimentos com anomalias em cada mês.
-    """
     if df is None or df.empty:
         return None, ["Sem dados válidos de anomalias."]
 
     df = df.copy()
     df["ANO_MES"] = df["Data Anomalia"].dt.to_period("M").astype(str)
+    if "NOME_CURTO" not in df.columns:
+        df["NOME_CURTO"] = pd.NA
+    if "Empreendimento_cod" not in df.columns:
+        # fallback: extrai dígitos e remove zeros à esquerda
+        df["Empreendimento_cod"] = (
+            df["Empreendimento"].astype(str)
+              .str.extract(r"(\d+)", expand=False)
+              .fillna(df["Empreendimento"].astype(str))
+              .str.lstrip("0")
+        )
 
     contagem = (
         df.groupby("ANO_MES", dropna=True)
@@ -107,28 +113,42 @@ def grafico_anomalias_por_mes_com_comentarios(df: pd.DataFrame):
     if contagem.empty:
         return None, ["Sem datas válidas na coluna 'Data Anomalia'."]
 
-    chart = (
+    # --- barras ---
+    bars = (
         alt.Chart(contagem)
         .mark_bar()
         .encode(
             x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
             y=alt.Y("TOTAL_ANOMALIAS:Q", title="Total de Anomalias"),
             tooltip=[alt.Tooltip("ANO_MES:N", title="Mês"),
-                     alt.Tooltip("TOTAL_ANOMALIAS:Q", title="Total")]
+                     alt.Tooltip("TOTAL_ANOMALIAS:Q", title="Total", format=".0f")]
         )
-        .properties(title="Total de Anomalias por Mês", height=300)
     )
 
+    # --- rótulos em cima das barras (sem decimais) ---
+    labels = (
+        alt.Chart(contagem)
+        .mark_text(align="center", baseline="bottom", dy=-2)
+        .encode(
+            x=alt.X("ANO_MES:N"),
+            y=alt.Y("TOTAL_ANOMALIAS:Q"),
+            text=alt.Text("TOTAL_ANOMALIAS:Q", format=".0f")
+        )
+    )
+
+    chart = alt.layer(bars, labels).properties(
+        title="Total de Anomalias por Mês",
+        height=300
+    )
+
+    # --- comentários por mês (código sem .0) ---
     comentarios = []
     for mes in contagem["ANO_MES"]:
         dfm = df[df["ANO_MES"] == mes]
-        # monta "COD (NOME_CURTO)" quando disponível; senão usa o que veio do CSV
-        cods  = dfm["Empreendimento"].astype(str).str.strip()
-        nomes = dfm.get("NOME_CURTO")
-        if nomes is not None:
-            pares = {f"{c} ({n})" if pd.notna(n) else c for c, n in zip(cods, nomes)}
-        else:
-            pares = set(cods)
+        cods  = dfm["Empreendimento_cod"].astype(str).str.strip()
+        nomes = dfm["NOME_CURTO"]
+        pares = {f"{c} ({n})" if pd.notna(n) and str(n).strip() else c
+                 for c, n in zip(cods, nomes)}
         lista = ", ".join(sorted(pares)) if pares else "—"
         comentarios.append(f"🔎 **{mes}** — Obras com anomalias: {lista}")
 
