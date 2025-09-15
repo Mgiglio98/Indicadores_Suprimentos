@@ -773,18 +773,40 @@ with st.container(border=True):
             var_name="TIPO",
             value_name="QTD"
         )
+        df_long["QTD"] = pd.to_numeric(df_long["QTD"], errors="coerce").fillna(0).astype(int)
 
-        chart = (
+        # Barras agrupadas (duas por mês)
+        bars = (
             alt.Chart(df_long)
             .mark_bar()
             .encode(
                 x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                xOffset=alt.XOffset("TIPO:N", sort=["REQUISICOES", "OFS"]),
                 y=alt.Y("QTD:Q", title="Quantidade"),
                 color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10")),
+                tooltip=[
+                    alt.Tooltip("ANO_MES:N", title="Mês"),
+                    alt.Tooltip("TIPO:N", title="Tipo"),
+                    alt.Tooltip("QTD:Q", title="Qtd", format=".0f"),
+                ],
             )
             .properties(height=300)
         )
 
+        # Rótulos nas barras
+        labels = (
+            alt.Chart(df_long)
+            .mark_text(align="center", baseline="bottom", dy=-2)
+            .encode(
+                x=alt.X("ANO_MES:N"),
+                xOffset=alt.XOffset("TIPO:N", sort=["REQUISICOES", "OFS"]),
+                y=alt.Y("QTD:Q"),
+                text=alt.Text("QTD:Q", format=".0f"),
+                detail="TIPO:N",
+            )
+        )
+
+        chart = alt.layer(bars, labels).resolve_scale(y="shared")
         st.altair_chart(chart, use_container_width=True)
     else:
         st.info("Sem dados de REQ ou OF para 2025.")
@@ -887,3 +909,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
