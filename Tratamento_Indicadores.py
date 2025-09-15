@@ -158,10 +158,22 @@ def menor_ordem_fornecimento(
     return out
 
 def valor_medio_por_of(df):
-    tot = df.groupby("OF_CDG")["PRCTTL_INSUMO"].sum().reset_index(name="VALOR_TOTAL_OF")
-    tot["VALOR_TOTAL_OF"] = pd.to_numeric(tot["VALOR_TOTAL_OF"], errors="coerce").round(2)
+    base = df.copy()
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base.get("PRCTTL_INSUMO"), errors="coerce")
+
+    # Soma por OF
+    tot = (
+        base.groupby("OF_CDG", dropna=True)["PRCTTL_INSUMO"]
+            .sum()
+            .reset_index(name="VALOR_TOTAL_OF")
+    )
+    # Remove OFs com total <= 0
+    tot["VALOR_TOTAL_OF"] = pd.to_numeric(tot["VALOR_TOTAL_OF"], errors="coerce")
+    tot = tot[tot["VALOR_TOTAL_OF"] > 0]
+
     media = float(tot["VALOR_TOTAL_OF"].mean()) if not tot.empty else 0.0
-    return media, tot
+    tot["VALOR_TOTAL_OF"] = tot["VALOR_TOTAL_OF"].round(2)
+    return round(media, 2), tot
 
 def percentual_ofs_basicas_ultimo_ano(df):
     df = df.copy()
@@ -1268,5 +1280,6 @@ def total_ofs_basico_vs_nao(
         "ESPECÍFICO": int(total_especifico),
         "TOTAL": int(len(agrupado))
     }
+
 
 
