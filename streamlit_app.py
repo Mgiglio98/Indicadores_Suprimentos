@@ -47,6 +47,11 @@ from fornecedores_core import (
     serie_fornecedores_cadastrados_por_ano,
 )
 
+from Tratamento_Anomalias import (
+    carregar_anomalias, 
+    grafico_anomalias_por_mes_com_comentarios
+)
+
 st.set_page_config(page_title="Suprimentos • Indicadores & Fornecedores", layout="wide")
 # ===== Topo com título à esquerda e logo à direita =====
 from pathlib import Path
@@ -840,6 +845,19 @@ with st.container(border=True):
                 #)
     else:
         st.info("Sem dados de REQ → OF para 2025.")
+
+with st.container(border=True):
+   df_anomalias = carregar_anomalias()
+
+    st.subheader("📊 Anomalias por Mês")
+    chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
+    
+    if chart:
+        st.altair_chart(chart, use_container_width=True)
+        for c in comentarios:
+            st.markdown(c)
+    else:
+        st.info("Sem dados de anomalias.") 
         
 # ---------- Estilo ----------
 st.markdown("""
