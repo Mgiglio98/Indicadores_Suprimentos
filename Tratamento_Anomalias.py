@@ -1,44 +1,111 @@
 # Tratamento_Anomalias.py
-import streamlit as st
+from __future__ import annotations
+from pathlib import Path
 import pandas as pd
 import altair as alt
-from pathlib import Path
+import re
 
-def carregar_anomalias():
-    base_dir = Path(__file__).parent
-    csv_path = base_dir / "Controle_Anomalias(Controle).csv"
-    xlsx_path = base_dir / "Empreendimentos.xlsx"
+# --- helpers ---------------------------------------------------------------
+def _read_csv_ok(path: Path) -> pd.DataFrame:
+    # tenta utf-8-sig e latin1 (CSV vindo do Excel/Windows cai num desses)
+    last_err = None
+    for enc in ("utf-8-sig", "latin1"):
+        try:
+            df = pd.read_csv(path, sep=";", encoding=enc)
+            break
+        except Exception as e:
+            last_err = e
+    else:
+        raise last_err
 
-    df = pd.read_csv(csv_path, sep=";")
+    # normaliza nomes de colunas (espaços, NBSP)
+    df.columns = (
+        df.columns.astype(str)
+        .str.replace("\xa0", " ", regex=False)
+        .str.strip()
+    )
+    return df
+
+def _only_digits(s: str) -> str:
+    s = str(s)
+    m = re.findall(r"\d+", s)
+    return m[0].lstrip("0") if m else s.strip()
+
+# --- carga e tratamento ----------------------------------------------------
+def carregar_anomalias(
+    base_dir: Path | None = None,
+    csv_name: str = "Controle_Anomalias(Controle).csv",
+    xlsx_name: str = "Empreendimentos.xlsx",
+) -> pd.DataFrame:
+    base_dir = base_dir or Path(__file__).parent
+
+    # CSV de anomalias
+    df = _read_csv_ok(base_dir / csv_name)
+    # tenta localizar as colunas mesmo que venham com variação de espaço/underscore
+    cols_lower = {c.lower().strip(): c for c in df.columns}
+    col_emp = cols_lower.get("empreendimento")
+    col_dt  = cols_lower.get("data anomalia") or cols_lower.get("data_anomalia")
+    if not col_emp or not col_dt:
+        raise KeyError(f"Esperava 'Empreendimento' e 'Data Anomalia'. Encontrei: {list(df.columns)}")
+
+    df = df.rename(columns={col_emp: "Empreendimento", col_dt: "Data Anomalia"})
     df["Empreendimento"] = df["Empreendimento"].astype(str).str.strip()
-    df["Data Anomalia"] = pd.to_datetime(df["Data Anomalia"], dayfirst=True, errors="coerce")
+    df["Empreendimento_cod"] = df["Empreendimento"].map(_only_digits)
+    # datas (robusto contra espaços/lixo)
+    df["Data Anomalia"] = pd.to_datetime(
+        df["Data Anomalia"].astype(str).str.replace("\xa0", " ", regex=False).str.strip(),
+        dayfirst=True,
+        errors="coerce",
+    )
+    # remove linhas sem data válida para não gerar barra "NaT"
+    df = df.dropna(subset=["Data Anomalia"]).copy()
+    if df.empty:
+        return df  # deixa o chamador tratar
 
-    df_emp = pd.read_excel(xlsx_path)
-    df_emp["EMP_CODIGO"] = df_emp["EMPREENDIMENTO"].astype(str).str.split("-").str[0].str.strip()
+    # Excel de empreendimentos
+    df_emp = pd.read_excel(base_dir / xlsx_name)
+    df_emp.columns = df_emp.columns.astype(str).str.replace("\xa0", " ", regex=False).str.strip()
+    emp_col = "EMPREENDIMENTO" if "EMPREENDIMENTO" in df_emp.columns else "Empreendimento"
+    if emp_col not in df_emp.columns:
+        raise KeyError(f"Coluna 'EMPREENDIMENTO' não encontrada no {xlsx_name}. Colunas: {list(df_emp.columns)}")
 
-    # Se não houver "-", cria NOME_CURTO igual ao código
-    df_emp["NOME_CURTO"] = (
-        df_emp["EMPREENDIMENTO"]
-        .astype(str)
-        .apply(lambda x: x.split("-")[1].strip().split()[0] if "-" in x else x.strip())
+    # quebra "2316 - MARCO"
+    df_emp["EMP_CODIGO"]  = df_emp[emp_col].astype(str).str.split("-", n=1).str[0].map(_only_digits)
+    df_emp["NOME_CURTO"]  = (
+        df_emp[emp_col].astype(str)
+        .apply(lambda x: x.split("-", 1)[1].strip() if "-" in x else x.strip())
+        .str.split().str[0]
     )
 
-    df_merged = df.merge(df_emp, how="left", left_on="Empreendimento", right_on="EMP_CODIGO")
+    # merge pelo código
+    out = df.merge(
+        df_emp[["EMP_CODIGO", "NOME_CURTO"]],
+        how="left",
+        left_on="Empreendimento_cod",
+        right_on="EMP_CODIGO",
+    )
+    return out
 
-    # Garante que NOME_CURTO existe mesmo se merge não achar correspondência
-    if "NOME_CURTO" not in df_merged.columns:
-        df_merged["NOME_CURTO"] = df_merged["Empreendimento"]
+# --- gráfico + comentários -------------------------------------------------
+def grafico_anomalias_por_mes_com_comentarios(df: pd.DataFrame):
+    """
+    Retorna (alt.Chart, list[str]) — gráfico de barras verticais e comentários
+    listando os empreendimentos com anomalias em cada mês.
+    """
+    if df is None or df.empty:
+        return None, ["Sem dados válidos de anomalias."]
 
-    return df_merged
-    
-def grafico_anomalias_por_mes_com_comentarios(df):
     df = df.copy()
     df["ANO_MES"] = df["Data Anomalia"].dt.to_period("M").astype(str)
 
-    if "NOME_CURTO" not in df.columns:
-        df["NOME_CURTO"] = df["Empreendimento"]
-
-    contagem = df.groupby("ANO_MES").size().reset_index(name="TOTAL_ANOMALIAS")
+    contagem = (
+        df.groupby("ANO_MES", dropna=True)
+          .size()
+          .reset_index(name="TOTAL_ANOMALIAS")
+          .sort_values("ANO_MES")
+    )
+    if contagem.empty:
+        return None, ["Sem datas válidas na coluna 'Data Anomalia'."]
 
     chart = (
         alt.Chart(contagem)
@@ -46,25 +113,23 @@ def grafico_anomalias_por_mes_com_comentarios(df):
         .encode(
             x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
             y=alt.Y("TOTAL_ANOMALIAS:Q", title="Total de Anomalias"),
-            tooltip=["ANO_MES", "TOTAL_ANOMALIAS"]
+            tooltip=[alt.Tooltip("ANO_MES:N", title="Mês"),
+                     alt.Tooltip("TOTAL_ANOMALIAS:Q", title="Total")]
         )
         .properties(title="Total de Anomalias por Mês", height=300)
     )
 
     comentarios = []
     for mes in contagem["ANO_MES"]:
-        empreendimentos_mes = (
-            df.loc[df["ANO_MES"] == mes, ["Empreendimento", "NOME_CURTO"]]
-            .dropna()
-            .drop_duplicates()
-        )
-
-        if len(empreendimentos_mes) > 0:
-            lista = ", ".join(
-                empreendimentos_mes.apply(lambda x: f"{x['Empreendimento']} ({x['NOME_CURTO']})", axis=1)
-            )
-            comentarios.append(f"🔎 **{mes}** — Obras com anomalias: {lista}")
+        dfm = df[df["ANO_MES"] == mes]
+        # monta "COD (NOME_CURTO)" quando disponível; senão usa o que veio do CSV
+        cods  = dfm["Empreendimento"].astype(str).str.strip()
+        nomes = dfm.get("NOME_CURTO")
+        if nomes is not None:
+            pares = {f"{c} ({n})" if pd.notna(n) else c for c, n in zip(cods, nomes)}
         else:
-            comentarios.append(f"🔎 **{mes}** — Sem anomalias registradas.")
+            pares = set(cods)
+        lista = ", ".join(sorted(pares)) if pares else "—"
+        comentarios.append(f"🔎 **{mes}** — Obras com anomalias: {lista}")
 
     return chart, comentarios
