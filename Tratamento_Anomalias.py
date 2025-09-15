@@ -4,23 +4,29 @@ import altair as alt
 from pathlib import Path
 
 def carregar_anomalias():
-    """
-    Lê os arquivos de anomalias e empreendimentos do diretório atual.
-    """
     base_dir = Path(__file__).parent
     csv_path = base_dir / "Controle_Anomalias(Controle).csv"
     xlsx_path = base_dir / "Empreendimentos.xlsx"
 
-    # Leitura e tratamento
+    # Lê CSV separando corretamente
     df = pd.read_csv(csv_path, sep=";")
+
+    # Confirma se a coluna existe
+    if "Empreendimento" not in df.columns:
+        raise KeyError(f"Coluna 'Empreendimento' não encontrada. Colunas disponíveis: {list(df.columns)}")
+
     df["Data Anomalia"] = pd.to_datetime(df["Data Anomalia"], dayfirst=True, errors="coerce")
+    df["Empreendimento"] = df["Empreendimento"].astype(str)
+
     df_emp = pd.read_excel(xlsx_path)
+    if "EMPREENDIMENTO" not in df_emp.columns:
+        raise KeyError(f"Coluna 'EMPREENDIMENTO' não encontrada no Excel. Colunas disponíveis: {list(df_emp.columns)}")
 
-    # Faz merge para enriquecer os dados
+    df_emp["EMPREENDIMENTO"] = df_emp["EMPREENDIMENTO"].astype(str)
+
+    # Faz o merge
     df_merged = df.merge(df_emp, how="left", left_on="Empreendimento", right_on="EMPREENDIMENTO")
-
     return df_merged
-
 
 def grafico_anomalias_por_mes_com_comentarios(df):
     if df.empty:
@@ -57,3 +63,4 @@ def grafico_anomalias_por_mes_com_comentarios(df):
             comentarios.append(f"🔎 **{mes}** — Sem anomalias registradas.")
 
     return chart, comentarios
+
