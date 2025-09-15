@@ -361,11 +361,11 @@ with st.container(border=True):
    # Linha 1 centralizada (5 KPIs)
     spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, r1c6, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 2, 1])
 
-    r1c1.metric("Valor médio OF", _format_brl(round(media_of, 2)) if media_of is not None else "—")
-    r1c2.metric("Valor médio por Insumo", _format_brl(round(media_item, 2)) if media_item is not None else "—")
+    r1c1.metric("Valor médio OF (10a)", _format_brl(round(media_of, 2)) if media_of is not None else "—")
+    r1c2.metric("Valor médio por Insumo (10a)", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     r1c3.metric("% de OFs Básicas (12m)", _format_pct_br(pct_bas) if pct_bas is not None else "—")
     r1c4.metric("Fornecedores Cadastrados", f"{total_cad}" if total_cad is not None else "—")
-    r1c5.metric("Fornecedores utilizados (3 anos)", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
+    r1c5.metric("Fornecedores utilizados (3a)", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
     r1c6.metric("Cadastrados último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
     
     # Linha 2 centralizada (4 KPIs)
@@ -373,7 +373,7 @@ with st.container(border=True):
 
     r2c1.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
     r2c2.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
-    r2c3.metric("Tempo médio OF (5 anos)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
+    r2c3.metric("Tempo médio OF (5a)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
     r2c4.metric("OFs < R$ 300 - 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
     r2c5.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
     r2c6.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
@@ -869,7 +869,10 @@ with st.container(border=True):
         st.info("Sem dados de REQ → OF para 2025.")
 
 with st.container(border=True):
-    df_anomalias = carregar_anomalias(Path(__file__).parent)
+    df_anomalias = df_anomalias[
+        df_anomalias["Data Anomalia"].dt.to_period("M").astype(str) != "2025-03"
+    ]
+    chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
     st.subheader("📊 Anomalias por Mês")
     
     chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
