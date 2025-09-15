@@ -847,17 +847,20 @@ with st.container(border=True):
         st.info("Sem dados de REQ → OF para 2025.")
 
 with st.container(border=True):
-    df_anomalias = carregar_anomalias()
-
+    df_anomalias = carregar_anomalias(Path(__file__).parent)
     st.subheader("📊 Anomalias por Mês")
-    chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
     
+    chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
     if chart:
         st.altair_chart(chart, use_container_width=True)
-        for c in comentarios:
-            st.markdown(c)
     else:
-        st.info("Sem dados de anomalias.") 
+        st.info(comentarios[0])
+    
+    for c in comentarios:
+        st.markdown(c)
+    
+    # debug opcional (remova depois)
+    st.caption(f"Linhas lidas: {len(df_anomalias)} | datas inválidas: {(df_anomalias['Data Anomalia'].isna()).sum()}")
         
 # ---------- Estilo ----------
 st.markdown("""
@@ -884,5 +887,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
-
