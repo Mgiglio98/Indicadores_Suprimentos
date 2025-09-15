@@ -868,19 +868,27 @@ with st.container(border=True):
     else:
         st.info("Sem dados de REQ → OF para 2025.")
 
+# Carrega apenas uma vez
+if "df_anomalias" not in st.session_state:
+    st.session_state["df_anomalias"] = carregar_anomalias(Path(__file__).parent)
+
 with st.container(border=True):
     st.subheader("📊 Anomalias por Mês")
 
-    # (opcional) garante datetime; se já estiver ok, não muda nada
+    df_anomalias = st.session_state["df_anomalias"].copy()
+
+    # Garante datetime
     df_anomalias["Data Anomalia"] = pd.to_datetime(
         df_anomalias["Data Anomalia"], errors="coerce"
     )
 
-    # exclui março/2025
-    mask_marco_2025 = df_anomalias["Data Anomalia"].dt.to_period("M").astype(str) == "2025-03"
-    df_anomalias_filtrado = df_anomalias.loc[~mask_marco_2025].copy()
+    # Excluir março/2025
+    df_anomalias = df_anomalias[
+        df_anomalias["Data Anomalia"].dt.to_period("M").astype(str) != "2025-03"
+    ]
 
-    chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias_filtrado)
+    # Gráfico + comentários
+    chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
 
     if chart:
         st.altair_chart(chart, use_container_width=True)
@@ -888,9 +896,6 @@ with st.container(border=True):
             st.markdown(c)
     else:
         st.info(comentarios[0])
-    
-    # debug opcional (remova depois)
-    #st.caption(f"Linhas lidas: {len(df_anomalias)} | datas inválidas: {(df_anomalias['Data Anomalia'].isna()).sum()}")
         
 # ---------- Estilo ----------
 st.markdown("""
@@ -917,4 +922,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
