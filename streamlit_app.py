@@ -847,7 +847,7 @@ with st.container(border=True):
         st.info("Sem dados de REQ → OF para 2025.")
 
 with st.container(border=True):
-   df_anomalias = carregar_anomalias()
+    df_anomalias = carregar_anomalias()
 
     st.subheader("📊 Anomalias por Mês")
     chart, comentarios = grafico_anomalias_por_mes_com_comentarios(df_anomalias)
@@ -884,3 +884,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
