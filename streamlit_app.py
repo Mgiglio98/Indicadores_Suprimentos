@@ -882,7 +882,7 @@ with st.container(border=True):
         st.markdown(c)
     
     # debug opcional (remova depois)
-    st.caption(f"Linhas lidas: {len(df_anomalias)} | datas inválidas: {(df_anomalias['Data Anomalia'].isna()).sum()}")
+    #st.caption(f"Linhas lidas: {len(df_anomalias)} | datas inválidas: {(df_anomalias['Data Anomalia'].isna()).sum()}")
         
 # ---------- Estilo ----------
 st.markdown("""
@@ -909,4 +909,3 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
-
