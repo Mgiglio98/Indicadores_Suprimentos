@@ -386,14 +386,20 @@ with st.container(border=True):
     if df_basicos.empty:
         st.info("Nenhuma OF registrada em 2025.")
     else:
+        # --- melt para formato longo, seguro para o Altair ---
+        df_long = df_basicos.melt(
+            id_vars="ANO_MES",
+            value_vars=["BASICO", "ESPECIFICO"],
+            var_name="TIPO",
+            value_name="QTD"
+        )
         chart = (
-            alt.Chart(df_basicos)
-            .transform_fold(["BASICO","ESPECIFICO"], as_=["TIPO","QTD"])
+            alt.Chart(df_long)
             .mark_bar()
             .encode(
                 x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("QTD:Q", title="Quantidade de OFs"),
-                color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(domain=["BASICO","ESPECIFICO"], range=["#1f77b4","#ff7f0e"])),
+                y=alt.Y("QTD:Q", stack="normalize", title="Proporção"),
+                color=alt.Color("TIPO:N", title="Tipo"),
                 tooltip=["ANO_MES","TIPO","QTD"]
             )
             .properties(height=300)
@@ -902,4 +908,5 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
