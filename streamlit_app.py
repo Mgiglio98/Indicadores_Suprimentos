@@ -802,15 +802,15 @@ with st.container(border=True):
     df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
         # Mantém 1 casa decimal
-        df_media["MEDIA_REQUISICOES"] = df_media["MEDIA_REQUISICOES"].round(1)
+        df_media["MEDIA_REQ_POR_EMPR"] = df_media["MEDIA_REQUISICOES"].round(1)
 
         base = alt.Chart(df_media).encode(
             x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("MEDIA_REQUISICOES:Q", title="Média de requisições"),
+            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title="Média de requisições"),
             tooltip=[
                 alt.Tooltip("ANO_MES:N", title="Mês"),
-                alt.Tooltip("MEDIA_REQUISICOES:Q", title="Média", format=".1f"),
-                alt.Tooltip("TOTAL_REQUISICOES:Q", title="Total de REQs")
+                alt.Tooltip("MEDIA_REQ_POR_EMPR:Q", title="Média", format=".1f"),
+                alt.Tooltip("MEDIA_REQ_POR_EMPR:Q", title="Total de REQs")
             ]
         )
 
@@ -819,7 +819,7 @@ with st.container(border=True):
 
         # Labels com 1 casa decimal
         labels = base.mark_text(dy=-8).encode(
-            text=alt.Text("MEDIA_REQUISICOES:Q", format=".1f")
+            text=alt.Text("MEDIA_REQ_POR_EMPR:Q", format=".1f")
         )
 
         # Linha horizontal representando o limite/meta (4 requisições)
@@ -944,6 +944,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
