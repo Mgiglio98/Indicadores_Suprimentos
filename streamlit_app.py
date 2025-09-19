@@ -797,28 +797,45 @@ with st.container(border=True):
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
-    st.subheader("📈 Média de Requisições por Empreendimento — 2025")
+    st.subheader("📅 Média de Requisições por Empreendimento — 2025")
 
-    df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025, limite_top=4)
+    df_media = _safe(media_requisicoes_por_empreendimento_por_mes, df, ano=2025)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
+        # Mantém 1 casa decimal
+        df_media["MEDIA_REQUISICOES"] = df_media["MEDIA_REQUISICOES"].round(1)
+
         base = alt.Chart(df_media).encode(
             x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title=None, axis=None),  # remove eixo Y
-            tooltip=["ANO_MES", "TOTAL_REQ", "EMPREENDIMENTOS", "MEDIA_REQ_POR_EMPR"]
+            y=alt.Y("MEDIA_REQUISICOES:Q", title="Média de requisições"),
+            tooltip=[
+                alt.Tooltip("ANO_MES:N", title="Mês"),
+                alt.Tooltip("MEDIA_REQUISICOES:Q", title="Média", format=".1f"),
+                alt.Tooltip("TOTAL_REQUISICOES:Q", title="Total de REQs")
+            ]
         )
 
+        # Linha principal
         line = base.mark_line(point=True)
-        labels = base.mark_text(dy=-8).encode(text=alt.Text("MEDIA_REQ_POR_EMPR:Q", format=".2f"))
 
-        st.altair_chart(line + labels, use_container_width=True)
+        # Labels com 1 casa decimal
+        labels = base.mark_text(dy=-8).encode(
+            text=alt.Text("MEDIA_REQUISICOES:Q", format=".1f")
+        )
 
+        # Linha horizontal representando o limite/meta (4 requisições)
+        meta_line = alt.Chart(pd.DataFrame({"y": [4]})).mark_rule(
+            color="red", strokeDash=[4, 4]
+        ).encode(y="y:Q")
+
+        st.altair_chart(line + labels + meta_line, use_container_width=True)
+
+        # Lista de obras com mais de 4 requisições (dentro de expander)
         with st.expander("🔎 Ver obras com mais de 4 requisições por mês"):
             for _, row in df_media.iterrows():
                 if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
                     st.markdown(
                         f"**{row['ANO_MES']}** — {row['TOP_EMPREENDIMENTOS']}"
                     )
-
     else:
         st.info("Sem dados de requisições para 2025.")
 
@@ -927,4 +944,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
