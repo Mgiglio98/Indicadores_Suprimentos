@@ -248,8 +248,6 @@ except Exception as e:
 info = _repo_files_info()
 
 with st.container(border=False):
-    st.subheader("🗓️ Atualização do Painel")
-    st.markdown(f"**Atualizado em:** {info['max_str']}")
 
     f1, f2 = info["files"][0], info["files"][1]
     c1, c2, c3 = st.columns([1,1,4])  # espaço só no começo
@@ -257,7 +255,7 @@ with st.container(border=False):
     with c1:
         data1 = _read_file_bytes(f1["path"]) if f1["found"] else None
         st.download_button(
-            "Baixar total_indicadores.xlsx",
+            "📥 Baixar total_indicadores.xlsx",
             data=data1 if data1 is not None else b"",
             file_name="total_indicadores.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -267,7 +265,7 @@ with st.container(border=False):
     with c2:
         data2 = _read_file_bytes(f2["path"]) if f2["found"] else None
         st.download_button(
-            "Baixar FornecedoresAtivos.xlsx",
+            "📥 Baixar FornecedoresAtivos.xlsx",
             data=data2 if data2 is not None else b"",
             file_name="FornecedoresAtivos.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -929,3 +927,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
