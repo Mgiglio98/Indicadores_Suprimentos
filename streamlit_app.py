@@ -403,10 +403,10 @@ with st.container(border=True):
 
         # Labels com valores absolutos
         labels = base.mark_text(
-            dy=0,  # centraliza no meio do segmento
-            color="black"
+            dy=-5,  # desloca para cima
         ).encode(
-            text=alt.Text("QTD:Q", format=".0f")
+            text=alt.Text("QTD:Q", format=".0f"),
+            color=alt.value("white")  # melhor contraste
         )
         st.altair_chart(bars + labels, use_container_width=True)
 
@@ -950,5 +950,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
