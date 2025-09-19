@@ -37,7 +37,7 @@ from Tratamento_Indicadores import (
     media_requisicoes_por_empreendimento_mes,
     tempo_medio_req_para_of_por_mes,
     total_ofs_por_ano,
-    total_ofs_basico_vs_nao
+    ofs_basico_vs_nao_por_mes
 )
 
 from fornecedores_core import (
@@ -380,16 +380,49 @@ with st.container(border=True):
     r2c7.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
 
 with st.container(border=True):
-    st.subheader("📦 OFs Básicas vs Não Básicas — Agosto/2025")
+    st.subheader("📦 OFs Básicas vs Não Básicas — 2025")
+    df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2025)
 
-    resumo_basico = _safe(total_ofs_basico_vs_nao, df, ano=2025, mes=8)
-    if resumo_basico and resumo_basico["TOTAL"] > 0:
-        c1, c2, c3 = st.columns(3)
-        c1.metric("OFs com Básicos", _format_int_br(resumo_basico["BÁSICO"]))
-        c2.metric("OFs sem Básicos", _format_int_br(resumo_basico["ESPECÍFICO"]))
-        c3.metric("Total no mês", _format_int_br(resumo_basico["TOTAL"]))
+    if df_basicos.empty:
+        st.info("Nenhuma OF registrada em 2025.")
     else:
-        st.info("Nenhuma OF encontrada para Agosto/2025.")
+        chart = (
+            alt.Chart(df_basicos)
+            .transform_fold(["BASICO","ESPECIFICO"], as_=["TIPO","QTD"])
+            .mark_bar()
+            .encode(
+                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("QTD:Q", title="Quantidade de OFs"),
+                color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(domain=["BASICO","ESPECIFICO"], range=["#1f77b4","#ff7f0e"])),
+                tooltip=["ANO_MES","TIPO","QTD"]
+            )
+            .properties(height=300)
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+with st.container(border=True):
+    st.subheader("🧱 Materiais Básicos — Fornecimento por local")
+
+    st.markdown("**Fornecedores aptos por UF**")
+    df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
+
+    if isinstance(df_res, pd.DataFrame) and not df_res.empty:
+        # normaliza chave para evitar case/acentos
+        df_res = df_res.copy()
+        df_res["LOCAL_NORM"] = df_res["LOCAL"].astype(str).str.upper()
+        mapa = df_res.set_index("LOCAL_NORM")["FORNECEDORES_BÁSICO_CAD"].to_dict()
+
+        k1, k2, k3 = st.columns(3)
+        rj = int(mapa.get("RJ", 0))
+        sp = int(mapa.get("SP", 0))
+        sc = int(mapa.get("SC", 0))
+
+        _fmt = lambda n: f"{int(n):,}".replace(",", ".")
+        k1.metric("Fornecedores RJ", _fmt(rj))
+        k2.metric("Fornecedores SP", _fmt(sp))
+        k3.metric("Fornecedores SC", _fmt(sc))
+    else:
+        st.info("Sem dados para compor os contadores por local.")
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
@@ -437,6 +470,44 @@ with st.container(border=True):
             )
         else:
             st.info("Sem dados para exibir.")
+
+# ---------- Série de Fornecedores Ativos ----------
+with st.container(border=True):
+    st.subheader("📊 Fornecedores ativos por ano")
+
+    serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
+    if isinstance(serie, pd.DataFrame) and not serie.empty:
+        serie_plot = _fill_last_n_years(serie, year_col="ANO", y_col="FORNECEDORES_ATIVOS", n=10)
+        serie_plot_vis = serie_plot.copy()
+        serie_plot_vis["ANO_TXT"] = serie_plot_vis["ANO"].astype(str)
+        # rótulo BR
+        serie_plot_vis["FORNECEDORES_ATIVOS_TXT"] = serie_plot_vis["FORNECEDORES_ATIVOS"].map(_format_int_br)
+    
+        bars = (
+            alt.Chart(serie_plot_vis)
+            .mark_bar()
+            .encode(
+                x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("FORNECEDORES_ATIVOS:Q", title=None, axis=None),   # << remove eixo de valores
+                tooltip=["ANO_TXT", "FORNECEDORES_ATIVOS"]
+            )
+            .properties(height=300)
+        )
+    
+        labels = (
+            alt.Chart(serie_plot_vis)
+            .mark_text(dy=-5)  # acima da barra
+            .encode(
+                x="ANO_TXT:N",
+                y="FORNECEDORES_ATIVOS:Q",
+                text="FORNECEDORES_ATIVOS_TXT:N"
+            )
+        )
+    
+        chart_ativos = bars + labels
+        st.altair_chart(chart_ativos, use_container_width=True)
+    else:
+        st.info("Sem dados para exibir nos últimos 10 anos.")
 
 # ---------- OFs destaque ----------
 with st.container(border=True):
@@ -544,26 +615,6 @@ with st.container(border=True):
         except Exception as e:
             st.caption(f"Não consegui listar os itens da OF: {e}")
 
-    c3, c4 = st.columns(2)
-
-    with c3:
-        st.markdown("**🧱 Maior compra de um item**")   # fonte menor que subheader, igual ao "Maior OF"
-        df_itemmax = _safe(maior_compra_item_unico, df)
-        if isinstance(df_itemmax, pd.DataFrame) and not df_itemmax.empty:
-            df_itemmax_fmt = _fmt_df_brl(df_itemmax, money=["PRECO_TOTAL"], decimals=["QUANTIDADE"])
-            st.dataframe(df_itemmax_fmt, use_container_width=True, hide_index=True)
-        else:
-            st.info("Sem dados para exibir.")
-
-    with c4:
-        st.markdown("**🧱 Menor compra de um item**")
-        df_itemmin = _safe(menor_compra_item_unico, df)
-        if isinstance(df_itemmin, pd.DataFrame) and not df_itemmin.empty:
-            df_itemmin_fmt = _fmt_df_brl(df_itemmin, money=["PRECO_TOTAL"], decimals=["QUANTIDADE"])
-            st.dataframe(df_itemmin_fmt, use_container_width=True, hide_index=True)
-        else:
-            st.info("Sem dados para exibir.")
-
 # ---------- Volumes por período ----------
 with st.container(border=True):
     st.subheader("📈 Volumes por período")
@@ -609,44 +660,6 @@ with st.container(border=True):
             )
         else:
             st.info("Sem dados para exibir.")
-
-# ---------- Série de Fornecedores Ativos ----------
-with st.container(border=True):
-    st.subheader("📊 Fornecedores ativos por ano")
-
-    serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
-    if isinstance(serie, pd.DataFrame) and not serie.empty:
-        serie_plot = _fill_last_n_years(serie, year_col="ANO", y_col="FORNECEDORES_ATIVOS", n=10)
-        serie_plot_vis = serie_plot.copy()
-        serie_plot_vis["ANO_TXT"] = serie_plot_vis["ANO"].astype(str)
-        # rótulo BR
-        serie_plot_vis["FORNECEDORES_ATIVOS_TXT"] = serie_plot_vis["FORNECEDORES_ATIVOS"].map(_format_int_br)
-    
-        bars = (
-            alt.Chart(serie_plot_vis)
-            .mark_bar()
-            .encode(
-                x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("FORNECEDORES_ATIVOS:Q", title=None, axis=None),   # << remove eixo de valores
-                tooltip=["ANO_TXT", "FORNECEDORES_ATIVOS"]
-            )
-            .properties(height=300)
-        )
-    
-        labels = (
-            alt.Chart(serie_plot_vis)
-            .mark_text(dy=-5)  # acima da barra
-            .encode(
-                x="ANO_TXT:N",
-                y="FORNECEDORES_ATIVOS:Q",
-                text="FORNECEDORES_ATIVOS_TXT:N"
-            )
-        )
-    
-        chart_ativos = bars + labels
-        st.altair_chart(chart_ativos, use_container_width=True)
-    else:
-        st.info("Sem dados para exibir nos últimos 10 anos.")
 
 # ---------- Série de Categorias ----------
 with st.container(border=True):
@@ -727,39 +740,6 @@ with st.container(border=True):
             st.caption("Nenhuma categoria atende ao critério: vendas em TODOS os últimos 5 anos + base suficiente para cálculo.")
     except Exception as e:
         st.caption(f"Não foi possível calcular o crescimento desde 2015: {e}")
-        
-with st.container(border=True):
-    st.subheader("🧱 Materiais Básicos — Fornecimento por local")
-
-    # 1) Categorias dos básicos observadas no ERP
-    with st.expander("Categorias dos materiais básicos"):
-        df_cats = categorias_basicos_distintos(df)
-        if isinstance(df_cats, pd.DataFrame) and not df_cats.empty:
-            st.dataframe(df_cats, use_container_width=True, hide_index=True)
-        else:
-            st.info("Não encontrei categorias para TIPO_MATERIAL = 'BÁSICO'.")
-
-    # 2) & 3) Fornecedores CADASTRADOS aptos a vender básico por local (UF)
-    st.markdown("**Fornecedores aptos por UF**")
-    df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
-
-    if isinstance(df_res, pd.DataFrame) and not df_res.empty:
-        # normaliza chave para evitar case/acentos
-        df_res = df_res.copy()
-        df_res["LOCAL_NORM"] = df_res["LOCAL"].astype(str).str.upper()
-        mapa = df_res.set_index("LOCAL_NORM")["FORNECEDORES_BÁSICO_CAD"].to_dict()
-
-        k1, k2, k3 = st.columns(3)
-        rj = int(mapa.get("RJ", 0))
-        sp = int(mapa.get("SP", 0))
-        sc = int(mapa.get("SC", 0))
-
-        _fmt = lambda n: f"{int(n):,}".replace(",", ".")
-        k1.metric("Fornecedores RJ", _fmt(rj))
-        k2.metric("Fornecedores SP", _fmt(sp))
-        k3.metric("Fornecedores SC", _fmt(sc))
-    else:
-        st.info("Sem dados para compor os contadores por local.")
 
 # ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
@@ -922,3 +902,4 @@ div[data-testid="stMetric"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
