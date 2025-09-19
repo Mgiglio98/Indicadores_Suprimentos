@@ -378,31 +378,37 @@ with st.container(border=True):
     r2c7.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
 
 with st.container(border=True):
-    st.subheader("📦 OFs Básicas vs Não Básicas — 2025")
+    st.subheader("📦 OFs Básicas vs Específicas — 2025")
     df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2025)
 
     if df_basicos.empty:
         st.info("Nenhuma OF registrada em 2025.")
     else:
-        # --- melt para formato longo, seguro para o Altair ---
+        # --- melt para formato longo ---
         df_long = df_basicos.melt(
             id_vars="ANO_MES",
             value_vars=["BASICO", "ESPECIFICO"],
             var_name="TIPO",
             value_name="QTD"
         )
-        chart = (
-            alt.Chart(df_long)
-            .mark_bar()
-            .encode(
-                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("QTD:Q", stack="normalize", title="Proporção"),
-                color=alt.Color("TIPO:N", title="Tipo"),
-                tooltip=["ANO_MES","TIPO","QTD"]
-            )
-            .properties(height=300)
+
+        base = alt.Chart(df_long).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("QTD:Q", stack="normalize", title="Proporção"),
+            color=alt.Color("TIPO:N", title="Tipo"),
+            tooltip=["ANO_MES","TIPO","QTD"]
         )
-        st.altair_chart(chart, use_container_width=True)
+        # Barras empilhadas
+        bars = base.mark_bar()
+
+        # Labels com valores absolutos
+        labels = base.mark_text(
+            dy=0,  # centraliza no meio do segmento
+            color="black"
+        ).encode(
+            text=alt.Text("QTD:Q", format=".0f")
+        )
+        st.altair_chart(bars + labels, use_container_width=True)
 
 with st.container(border=True):
     st.subheader("🧱 Materiais Básicos — Fornecimento por local")
@@ -944,4 +950,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
