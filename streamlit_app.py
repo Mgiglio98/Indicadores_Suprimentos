@@ -693,7 +693,7 @@ with st.container(border=True):
             .encode(
                 y=alt.Y(
                     "CATEGORIA:N",
-                    sort=order_cats,                         # << força a ordem desejada
+                    sort=order_cats,
                     title="CATEGORIA",
                     axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
                 ),
@@ -814,16 +814,15 @@ with st.container(border=True):
 
         st.altair_chart(line + labels, use_container_width=True)
 
-        # Comentário: empreendimentos com mais de 4 requisições
-        for _, row in df_media.iterrows():
-            if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
-                st.markdown(
-                    f"🔎 **{row['ANO_MES']}** — Obras com mais de 4 requisições: {row['TOP_EMPREENDIMENTOS']}"
-                )
+        with st.expander("🔎 Ver obras com mais de 4 requisições por mês"):
+            for _, row in df_media.iterrows():
+                if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
+                    st.markdown(
+                        f"**{row['ANO_MES']}** — {row['TOP_EMPREENDIMENTOS']}"
+                    )
 
     else:
         st.info("Sem dados de requisições para 2025.")
-
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
@@ -831,26 +830,45 @@ with st.container(border=True):
 
     df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
+        # 🔢 Arredonda os valores para inteiro
+        df_tempo["MEDIA_DIAS_UTEIS"] = df_tempo["MEDIA_DIAS_UTEIS"].round(0).astype(int)
+
         base = alt.Chart(df_tempo).encode(
             x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
-            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title=None, axis=None),
-            tooltip=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"]
+            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title="Dias úteis", axis=alt.Axis(title="Média de dias")),
+            tooltip=[
+                alt.Tooltip("ANO_MES:N", title="Mês"),
+                alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias)", format=".0f"),
+                alt.Tooltip("TOTAL_OFS:Q", title="Total de OFs"),
+                alt.Tooltip("ULTRAPASSARAM_SLA:Q", title="Acima do SLA")
+            ]
         )
-
+        # 📈 Linha principal
         line = base.mark_line(point=True)
-        labels = base.mark_text(dy=-8).encode(text=alt.Text("MEDIA_DIAS_UTEIS:Q", format=".2f"))
 
-        st.altair_chart(line + labels, use_container_width=True)
+        # 🔢 Labels com valores inteiros
+        labels = base.mark_text(dy=-8).encode(
+            text=alt.Text("MEDIA_DIAS_UTEIS:Q", format=".0f")
+        )
+        # ➖ Linha horizontal representando o SLA (3 dias)
+        sla_line = alt.Chart(pd.DataFrame({"y": [3]})).mark_rule(
+            color="red", strokeDash=[4, 4]
+        ).encode(y="y:Q")
+
+        # 🖼️ Renderiza gráfico
+        st.altair_chart(line + labels + sla_line, use_container_width=True)
 
         # Comentário: meses com OFs acima do SLA
-        for _, row in df_tempo.iterrows():
-            total = row["TOTAL_OFS"]
-            acima = row["ULTRAPASSARAM_SLA"]
-            if acima > 0:
-                perc = (acima / total * 100) if total else 0
-                #st.markdown(
-                    #f"⚠️ **{row['ANO_MES']}** — {acima}/{total} OFs ({perc:.1f}%) ultrapassaram o SLA de 3 dias úteis."
-                #)
+        with st.expander("🔎 Ver meses que ultrapassaram o SLA (3 dias)"):
+            for _, row in df_tempo.iterrows():
+                total = row["TOTAL_OFS"]
+                acima = row["ULTRAPASSARAM_SLA"]
+                if acima > 0:
+                    perc = (acima / total * 100) if total else 0
+                    st.markdown(
+                        f"**{row['ANO_MES']}** — {acima} de {total} OFs acima do SLA "
+                        f"(`{perc:.1f}%`)"
+                    )
     else:
         st.info("Sem dados de REQ → OF para 2025.")
 
@@ -878,8 +896,9 @@ with st.container(border=True):
 
     if chart:
         st.altair_chart(chart, use_container_width=True)
-        for c in comentarios:
-            st.markdown(c)
+        with st.expander("🔎 Ver obras com anomalias por mês"):
+            for c in comentarios:
+                st.markdown(c)
     else:
         st.info(comentarios[0])
         
@@ -892,21 +911,21 @@ section.main > div { padding-top: 0.5rem; }
 /* h1 compacto */
 h1 { line-height: 1.25; }
 
+/* forçar cor preta para todo o texto */
+html, body, [class*="css"] {
+    color: black !important;}
+
 /* cards: borda mais suave e menos espaço vertical */
 div[data-testid="stMetric"] {
     background: rgba(255,255,255,0.02);
     padding: 0.75rem 0.75rem;
-    border-radius: 12px;
-}
+    border-radius: 12px;}
 
 /* valor do KPI um pouco maior */
 [data-testid="stMetricValue"] { font-size: 1.55rem; }
 
 /* subtítulo das seções */
 .block-container h3, .block-container h2, .block-container h4 {
-    letter-spacing: .2px;
-}
+    letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
