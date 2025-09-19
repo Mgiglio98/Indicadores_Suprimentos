@@ -802,7 +802,7 @@ with st.container(border=True):
     df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
         # Mantém 1 casa decimal
-        df_media["MEDIA_REQ_POR_EMPR"] = df_media["MEDIA_REQUISICOES"].round(1)
+        df_media["MEDIA_REQ_POR_EMPR"] = df_media["MEDIA_REQ_POR_EMPR"].round(1)
 
         base = alt.Chart(df_media).encode(
             x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
@@ -944,3 +944,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
