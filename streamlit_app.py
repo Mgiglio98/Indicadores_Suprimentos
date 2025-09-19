@@ -799,7 +799,7 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("📅 Média de Requisições por Empreendimento — 2025")
 
-    df_media = _safe(media_requisicoes_por_empreendimento_por_mes, df, ano=2025)
+    df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
         # Mantém 1 casa decimal
         df_media["MEDIA_REQUISICOES"] = df_media["MEDIA_REQUISICOES"].round(1)
@@ -944,5 +944,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
