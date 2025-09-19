@@ -50,7 +50,7 @@ def carregar_bases():
 
     return df_erp
 
-def fornecedor_top_por_uf(df, anos=10, ufs=("RJ", "SP")):
+def fornecedor_top_por_uf(df, anos=10, ufs=("RJ", "SP", "SC")):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
     limite = pd.Timestamp.today() - pd.DateOffset(years=anos)
@@ -1241,45 +1241,42 @@ def total_ofs_por_ano(
         .to_dict())
     return {str(k): int(v) for k, v in contagens.items()}
 
-def total_ofs_basico_vs_nao(
+def ofs_basico_vs_nao_por_mes(
     df: pd.DataFrame,
     ano: int = 2025,
-    mes: int = 8,
     col_tipo: str = "TIPO_MATERIAL",
     col_of: str = "OF_CDG",
     col_data: str = "OF_DATA"
-) -> dict:
+) -> pd.DataFrame:
     """
-    Conta OFs distintas no mês/ano informado, separando:
-    - OFs que tiveram ao menos 1 item básico
-    - OFs que não tiveram nenhum item básico
-
-    Retorna dict com {"BÁSICO": X, "ESPECÍFICO": Y, "TOTAL": Z}
+    Conta OFs com e sem básicos para cada mês do ano especificado.
+    Retorna DataFrame: ANO_MES | BASICO | ESPECIFICO | TOTAL
     """
     base = df.copy()
     base["OF_DATA_DT"] = pd.to_datetime(base.get(col_data), errors="coerce")
     base = base.dropna(subset=["OF_DATA_DT", col_of, col_tipo])
 
-    # Filtra pelo mês/ano
-    base = base[(base["OF_DATA_DT"].dt.year == ano) & (base["OF_DATA_DT"].dt.month == mes)]
+    # filtra só o ano desejado
+    base = base[base["OF_DATA_DT"].dt.year == ano]
     if base.empty:
-        return {"BÁSICO": 0, "ESPECÍFICO": 0, "TOTAL": 0}
+        return pd.DataFrame(columns=["ANO_MES","BASICO","ESPECIFICO","TOTAL"])
 
-    # Cria um agrupamento por OF → se há pelo menos 1 item básico
+    # agrega por OF → define se é básico ou específico
     agrupado = (
-        base.groupby(col_of)[col_tipo]
+        base.groupby([col_of, base["OF_DATA_DT"].dt.to_period("M")])[col_tipo]
         .apply(lambda x: "BÁSICO" if "BÁSICO" in set(x) else "ESPECÍFICO")
         .reset_index(name="TIPO_OF")
     )
 
-    total_basico = (agrupado["TIPO_OF"] == "BÁSICO").sum()
-    total_especifico = (agrupado["TIPO_OF"] == "ESPECÍFICO").sum()
+    resumo = (
+        agrupado.groupby("OF_DATA_DT")["TIPO_OF"]
+        .value_counts()
+        .unstack(fill_value=0)
+        .reset_index()
+        .rename(columns={"OF_DATA_DT": "ANO_MES", "BÁSICO": "BASICO", "ESPECÍFICO": "ESPECIFICO"})
+    )
 
-    return {
-        "BÁSICO": int(total_basico),
-        "ESPECÍFICO": int(total_especifico),
-        "TOTAL": int(len(agrupado))
-    }
+    resumo["TOTAL"] = resumo["BASICO"] + resumo["ESPECIFICO"]
+    resumo["ANO_MES"] = resumo["ANO_MES"].astype(str)
 
-
-
+    return resumo
