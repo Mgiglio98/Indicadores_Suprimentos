@@ -313,8 +313,11 @@ with st.container(border=True):
         qtd_vend = None
 
     # Cadastrados no último ano
+    # Filtrar apenas fornecedores cadastrados por VANDERLEI.SOUZA
+    df_forn_vanderlei = df_forn[df_forn["FORN_QUEMCADASTROU"] == "VANDERLEI.SOUZA"]
+    
     try:
-        cad_serie = serie_fornecedores_cadastrados_por_ano(df_forn, anos=1)
+        cad_serie = serie_fornecedores_cadastrados_por_ano(df_forn_vanderlei, anos=1)
         cad_no_ano = int(cad_serie["FORNECEDORES_CADASTRADOS"].sum()) if not cad_serie.empty else 0
     except Exception:
         cad_no_ano = None
@@ -949,5 +952,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
