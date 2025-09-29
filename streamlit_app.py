@@ -465,7 +465,7 @@ with st.container(border=True):
 
     with c2:
         st.caption("Últimos 2 anos")
-        df_top2 = _safe(fornecedor_top_por_uf, df, anos=2)
+        df_top2 = _safe(fornecedor_top_por_uf_emp, df, anos=2)
         if isinstance(df_top2, pd.DataFrame) and not df_top2.empty:
             if "FORNECEDOR_CDG" in df_top2.columns:
                 df_top2["FORNECEDOR_CDG"] = df_top2["FORNECEDOR_CDG"].astype("string")
@@ -953,6 +953,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
