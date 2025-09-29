@@ -879,16 +879,16 @@ with st.container(border=True):
         st.altair_chart(line + labels + sla_line, use_container_width=True)
 
         # Comentário: meses com OFs acima do SLA
-        with st.expander("🔎 Ver meses que ultrapassaram o SLA (3 dias)"):
-            for _, row in df_tempo.iterrows():
-                total = row["TOTAL_OFS"]
-                acima = row["ULTRAPASSARAM_SLA"]
-                if acima > 0:
-                    perc = (acima / total * 100) if total else 0
-                    st.markdown(
-                        f"**{row['ANO_MES']}** — {acima} de {total} OFs acima do SLA "
-                        f"(`{perc:.1f}%`)"
-                    )
+        # with st.expander("🔎 Ver meses que ultrapassaram o SLA (3 dias)"):
+        #     for _, row in df_tempo.iterrows():
+        #         total = row["TOTAL_OFS"]
+        #         acima = row["ULTRAPASSARAM_SLA"]
+        #         if acima > 0:
+        #             perc = (acima / total * 100) if total else 0
+        #             st.markdown(
+        #                 f"**{row['ANO_MES']}** — {acima} de {total} OFs acima do SLA "
+        #                 f"(`{perc:.1f}%`)"
+        #             )
     else:
         st.info("Sem dados de REQ → OF para 2025.")
 
@@ -949,7 +949,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
 
