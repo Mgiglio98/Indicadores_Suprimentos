@@ -520,7 +520,7 @@ with st.container(border=True):
 
 # ---------- OFs destaque ----------
 with st.container(border=True):
-    st.subheader("🛒 Principais Vendas")
+    st.subheader("🛒 Principais Vendas - Últimos 10 anos")
     c1, c2 = st.columns(2)
 
     with c1:
@@ -949,4 +949,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
