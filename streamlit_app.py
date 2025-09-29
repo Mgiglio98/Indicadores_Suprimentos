@@ -37,7 +37,8 @@ from Tratamento_Indicadores import (
     media_requisicoes_por_empreendimento_mes,
     tempo_medio_req_para_of_por_mes,
     total_ofs_por_ano,
-    ofs_basico_vs_nao_por_mes
+    ofs_basico_vs_nao_por_mes,
+    fornecedor_top_por_uf_emp
 )
 
 from fornecedores_core import (
@@ -443,7 +444,7 @@ with st.container(border=True):
 
     with c1:
         st.caption("Últimos 10 anos")
-        df_top10 = _safe(fornecedor_top_por_uf, df, anos=10)
+        df_top10 = _safe(fornecedor_top_por_uf_emp, df, anos=10)
         if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
             if "FORNECEDOR_CDG" in df_top10.columns:
                 df_top10["FORNECEDOR_CDG"] = df_top10["FORNECEDOR_CDG"].astype("string")
@@ -952,6 +953,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
