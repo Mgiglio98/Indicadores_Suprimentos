@@ -82,6 +82,50 @@ def fornecedor_top_por_uf(df, anos=10, ufs=("RJ", "SP", "SC")):
         out["VALOR"] = pd.to_numeric(out["VALOR"], errors="coerce").round(2)
     return out
 
+def fornecedor_top_por_uf_emp(df, anos=10, ufs=("RJ", "SP", "SC")):
+    """
+    Retorna o fornecedor com maior valor de OF por UF do EMPREENDIMENTO.
+    
+    Parâmetros:
+        df   : DataFrame com colunas EMPRD_UF, OF_DATA, FORNECEDOR_CDG, FORNECEDOR_DESC, PRCTTL_INSUMO
+        anos : intervalo de tempo em anos a considerar (default=10)
+        ufs  : tupla/lista com os estados alvo
+    """
+    df = df.copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+    limite = pd.Timestamp.today() - pd.DateOffset(years=anos)
+    base = df[df["OF_DATA_DT"] >= limite]
+
+    out = []
+    for uf in ufs:
+        top = (
+            base[base["EMPRD_UF"] == uf]
+            .groupby(["FORNECEDOR_CDG", "FORNECEDOR_DESC"], as_index=False)["PRCTTL_INSUMO"]
+            .sum()
+            .sort_values("PRCTTL_INSUMO", ascending=False)
+            .head(1)
+        )
+        if not top.empty:
+            out.append(
+                {
+                    "UF": uf,
+                    "FORNECEDOR_CDG": top.iloc[0]["FORNECEDOR_CDG"],
+                    "FORNECEDOR_DESC": top.iloc[0]["FORNECEDOR_DESC"],
+                    "VALOR": float(top.iloc[0]["PRCTTL_INSUMO"]),
+                }
+            )
+
+    out = pd.DataFrame(out)
+    if not out.empty:
+        # Normaliza o código do fornecedor para ter mesmo tamanho
+        out["FORNECEDOR_CDG"] = out["FORNECEDOR_CDG"].astype("string")
+        w = int(out["FORNECEDOR_CDG"].dropna().astype(str).str.len().max())
+        if w > 0:
+            out["FORNECEDOR_CDG"] = out["FORNECEDOR_CDG"].str.zfill(w)
+        out["VALOR"] = pd.to_numeric(out["VALOR"], errors="coerce").round(2)
+
+    return out
+
 def maior_ordem_fornecimento(df):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
@@ -1280,3 +1324,4 @@ def ofs_basico_vs_nao_por_mes(
     resumo["ANO_MES"] = resumo["ANO_MES"].astype(str)
 
     return resumo
+
