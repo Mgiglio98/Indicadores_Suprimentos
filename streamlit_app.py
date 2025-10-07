@@ -900,51 +900,12 @@ with st.container(border=True):
 # ⬇️ NOVO bloco: tabela de OFs atrasadas (>3 dias úteis)
 
 with st.container(border=True):
-    st.markdown("### 🚨 OFs que ultrapassaram o SLA de 3 dias úteis")
-
-    try:
-        # Filtra apenas REQs de 2025
-        df_2025 = df.copy()
-        df_2025["REQ_DATA"] = pd.to_datetime(df_2025.get("REQ_DATA"), errors="coerce")
-        df_2025 = df_2025[df_2025["REQ_DATA"].dt.year == 2025]
-    
-        # Gera tabela de OFs atrasadas
-        df_ofs_atrasadas = tabela_ofs_atrasadas(df_2025)
-    
-        # 🔹 Adiciona colunas EMPREENDIMENTO se existirem
-        if not df_ofs_atrasadas.empty:
-            col_emp = [c for c in ["EMPREENDIMENTO", "EMPREENDIMENTO_DESC"] if c in df_2025.columns]
-            if col_emp:
-                # pega as colunas de empreendimento por OF
-                df_emp = (
-                    df_2025.dropna(subset=["OF_CDG"])
-                           .groupby("OF_CDG")[col_emp]
-                           .first()
-                           .reset_index()
-                           .rename(columns={"OF_CDG": "OF"})
-                )
-                df_ofs_atrasadas = df_ofs_atrasadas.merge(df_emp, on="OF", how="left")
-    
-        # Exibe a tabela
-        if isinstance(df_ofs_atrasadas, pd.DataFrame) and not df_ofs_atrasadas.empty:
-            st.dataframe(
-                df_ofs_atrasadas,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "REQUISICAO":         st.column_config.TextColumn("Requisição"),
-                    "DATA_REQUISICAO":    st.column_config.TextColumn("Data REQ"),
-                    "OF":                 st.column_config.TextColumn("OF"),
-                    "DATA_OF":            st.column_config.TextColumn("Data OF"),
-                    "EMPREENDIMENTO":     st.column_config.TextColumn("Empreendimento"),
-                    "EMPREENDIMENTO_DESC":st.column_config.TextColumn("Descrição do Empreendimento"),
-                    "INSUMOS":            st.column_config.TextColumn("Insumos")
-                },
-            )
-        else:
-            st.info("Nenhuma OF de requisições de 2025 ultrapassou o SLA de 3 dias úteis.")
-    except Exception as e:
-        st.warning(f"Não consegui gerar a tabela de OFs atrasadas: {e}")
+    df_ofs_atrasadas = tabela_ofs_atrasadas(df)  # já filtra ano atual e inclui colunas
+    st.subheader("🚨 OFs que ultrapassaram o SLA — Requisições 2025")
+    if not df_ofs_atrasadas.empty:
+        st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
+    else:
+        st.info("Nenhuma OF ultrapassou o SLA de 3 dias úteis em 2025.")
 
 # Carrega apenas uma vez
 if "df_anomalias" not in st.session_state:
@@ -1003,4 +964,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
