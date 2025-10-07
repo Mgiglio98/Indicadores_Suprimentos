@@ -896,6 +896,31 @@ with st.container(border=True):
     else:
         st.info("Sem dados de REQ → OF para 2025.")
 
+# ⬇️ NOVO bloco: tabela de OFs atrasadas (>3 dias úteis)
+
+with st.container(border=True):
+    st.markdown("### 🚨 OFs que ultrapassaram o SLA de 3 dias úteis")
+
+    try:
+        df_ofs_atrasadas = tabela_ofs_atrasadas(df)
+        if isinstance(df_ofs_atrasadas, pd.DataFrame) and not df_ofs_atrasadas.empty:
+            st.dataframe(
+                df_ofs_atrasadas,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "REQUISICAO":     st.column_config.TextColumn("Requisição"),
+                    "DATA_REQUISICAO":st.column_config.TextColumn("Data REQ"),
+                    "OF":             st.column_config.TextColumn("OF"),
+                    "DATA_OF":        st.column_config.TextColumn("Data OF"),
+                    "INSUMOS":        st.column_config.TextColumn("Insumos")
+                },
+            )
+        else:
+            st.info("Nenhuma OF ultrapassou o SLA de 3 dias úteis.")
+    except Exception as e:
+        st.warning(f"Não consegui gerar a tabela de OFs atrasadas: {e}")
+
 # Carrega apenas uma vez
 if "df_anomalias" not in st.session_state:
     st.session_state["df_anomalias"] = carregar_anomalias(Path(__file__).parent)
@@ -953,6 +978,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
