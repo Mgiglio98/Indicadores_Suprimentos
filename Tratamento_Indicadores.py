@@ -1328,55 +1328,103 @@ def ofs_basico_vs_nao_por_mes(
 
 def tabela_ofs_atrasadas(
     df: pd.DataFrame,
+    ano: int | None = None,
     dias_uteis_sla: int = 3
 ) -> pd.DataFrame:
     """
-    Retorna tabela com as OFs que ultrapassaram o SLA de `dias_uteis_sla`
+    Retorna tabela de OFs que ultrapassaram o SLA de `dias_uteis_sla`
     dias úteis entre REQ_DATA e OF_DATA.
 
-    Colunas:
-        REQUISICAO | DATA_REQUISICAO | OF | DATA_OF | INSUMOS
+    Inclui colunas:
+        EMPREENDIMENTO | EMPREENDIMENTO_DESC | REQUISICAO | DATA_REQUISICAO |
+        OF | DATA_OF | INSUMOS
+
+    Parâmetros:
+    ----------
+    df : pd.DataFrame
+        Base ERP com colunas ['REQ_DATA','OF_DATA','REQ_CDG','OF_CDG',
+        'INSUMO_DESC','EMPREENDIMENTO','EMPREENDIMENTO_DESC', ...]
+    ano : int | None
+        Ano das requisições a considerar. Se None, considera todos os anos.
+    dias_uteis_sla : int
+        Limite de SLA em dias úteis (padrão: 3)
     """
     base = df.copy()
+
+    # 🔹 Converte datas
     base["REQ_DATA"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
     base["OF_DATA"] = pd.to_datetime(base.get("OF_DATA"), errors="coerce")
 
-    # Mantém apenas linhas com datas válidas
-    base = base.dropna(subset=["REQ_DATA", "OF_DATA"]).copy()
-    if base.empty:
-        return pd.DataFrame(columns=["REQUISICAO","DATA_REQUISICAO","OF","DATA_OF","INSUMOS"])
+    # 🔹 Filtra apenas REQs do ano especificado (padrão: ano atual)
+    if ano is None:
+        ano = pd.Timestamp.today().year
+    base = base[base["REQ_DATA"].dt.year == ano]
 
-    # Agrega por OF (pega menor REQ, menor OF, lista insumos distintos)
+    # 🔹 Mantém apenas linhas com datas válidas
+    base = base.dropna(subset=["REQ_DATA", "OF_DATA", "OF_CDG"])
+    if base.empty:
+        return pd.DataFrame(
+            columns=[
+                "EMPREENDIMENTO", "EMPREENDIMENTO_DESC",
+                "REQUISICAO", "DATA_REQUISICAO", "OF",
+                "DATA_OF", "INSUMOS"
+            ]
+        )
+
+    # 🔹 Agrega por OF
     agg = (
         base.groupby("OF_CDG", dropna=True)
             .agg(
+                EMPREENDIMENTO=("EMPREENDIMENTO", "first"),
+                EMPREENDIMENTO_DESC=("EMPREENDIMENTO_DESC", "first"),
                 REQUISICAO=("REQ_CDG", "min"),
                 DATA_REQUISICAO=("REQ_DATA", "min"),
                 DATA_OF=("OF_DATA", "min"),
-                INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
+                INSUMOS=("INSUMO_DESC",
+                         lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
             )
             .reset_index()
             .rename(columns={"OF_CDG": "OF"})
     )
 
-    # Remove inconsistências
-    agg = agg[agg["DATA_OF"] >= agg["DATA_REQUISICAO"]].copy()
+    # 🔹 Remove inconsistências
+    agg = agg[agg["DATA_OF"] >= agg["DATA_REQUISICAO"]]
     if agg.empty:
-        return pd.DataFrame(columns=["REQUISICAO","DATA_REQUISICAO","OF","DATA_OF","INSUMOS"])
+        return pd.DataFrame(
+            columns=[
+                "EMPREENDIMENTO", "EMPREENDIMENTO_DESC",
+                "REQUISICAO", "DATA_REQUISICAO", "OF",
+                "DATA_OF", "INSUMOS"
+            ]
+        )
 
-    # Cálculo de dias úteis
-    start = agg["DATA_REQUISICAO"].dt.date.values.astype("datetime64[D]")
-    end   = agg["DATA_OF"].dt.date.values.astype("datetime64[D]")
-    dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask="1111100")
+    # 🔹 Cálculo de dias úteis
+    dias_uteis = np.busday_count(
+        begindates=agg["DATA_REQUISICAO"].dt.date.values.astype("datetime64[D]"),
+        enddates=agg["DATA_OF"].dt.date.values.astype("datetime64[D]"),
+        weekmask="1111100"       # segunda a sexta
+    )
     agg["DIAS_UTEIS"] = dias_uteis.astype(int)
 
-    # Filtra só OFs que passaram do SLA
-    atrasadas = agg[agg["DIAS_UTEIS"] > int(dias_uteis_sla)].copy()
+    # 🔹 Filtra só OFs que passaram do SLA
+    atrasadas = agg[agg["DIAS_UTEIS"] > dias_uteis_sla].copy()
     if atrasadas.empty:
-        return pd.DataFrame(columns=["REQUISICAO","DATA_REQUISICAO","OF","DATA_OF","INSUMOS"])
+        return pd.DataFrame(
+            columns=[
+                "EMPREENDIMENTO", "EMPREENDIMENTO_DESC",
+                "REQUISICAO", "DATA_REQUISICAO", "OF",
+                "DATA_OF", "INSUMOS"
+            ]
+        )
 
-    # Ajusta formatos finais
+    # 🔹 Formata datas
     atrasadas["DATA_REQUISICAO"] = atrasadas["DATA_REQUISICAO"].dt.strftime("%d/%m/%Y")
     atrasadas["DATA_OF"] = atrasadas["DATA_OF"].dt.strftime("%d/%m/%Y")
 
-    return atrasadas[["REQUISICAO","DATA_REQUISICAO","OF","DATA_OF","INSUMOS"]]
+    return atrasadas[
+        [
+            "EMPREENDIMENTO", "EMPREENDIMENTO_DESC",
+            "REQUISICAO", "DATA_REQUISICAO",
+            "OF", "DATA_OF", "INSUMOS"
+        ]
+    ]
