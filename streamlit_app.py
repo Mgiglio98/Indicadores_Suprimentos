@@ -900,12 +900,9 @@ with st.container(border=True):
 # ⬇️ NOVO bloco: tabela de OFs atrasadas (>3 dias úteis)
 
 with st.container(border=True):
-    df_ofs_atrasadas = tabela_ofs_atrasadas(df)  # já filtra ano atual e inclui colunas
+    df_ofs_atrasadas = tabela_ofs_atrasadas(df)
     st.subheader("🚨 OFs que ultrapassaram o SLA — Requisições 2025")
-    if not df_ofs_atrasadas.empty:
-        st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
-    else:
-        st.info("Nenhuma OF ultrapassou o SLA de 3 dias úteis em 2025.")
+    st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
 
 # Carrega apenas uma vez
 if "df_anomalias" not in st.session_state:
@@ -964,5 +961,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
