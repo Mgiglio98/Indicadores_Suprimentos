@@ -1375,8 +1375,8 @@ def tabela_ofs_atrasadas(
     agg = (
         base.groupby("OF_CDG", dropna=True)
             .agg(
-                EMPREENDIMENTO=("EMPREENDIMENTO", "first"),
-                EMPREENDIMENTO_DESC=("EMPREENDIMENTO_DESC", "first"),
+                EMPREENDIMENTO=("EMPRD_CDG", "first"),
+                EMPREENDIMENTO_DESC=("EMPRD_DESC", "first"),
                 REQUISICAO=("REQ_CDG", "min"),
                 DATA_REQUISICAO=("REQ_DATA", "min"),
                 DATA_OF=("OF_DATA", "min"),
@@ -1428,3 +1428,4 @@ def tabela_ofs_atrasadas(
             "OF", "DATA_OF", "INSUMOS"
         ]
     ]
+
