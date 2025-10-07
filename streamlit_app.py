@@ -38,7 +38,8 @@ from Tratamento_Indicadores import (
     tempo_medio_req_para_of_por_mes,
     total_ofs_por_ano,
     ofs_basico_vs_nao_por_mes,
-    fornecedor_top_por_uf_emp
+    fornecedor_top_por_uf_emp,
+    tabela_ofs_atrasadas
 )
 
 from fornecedores_core import (
@@ -978,6 +979,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
