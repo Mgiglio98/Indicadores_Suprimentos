@@ -903,22 +903,27 @@ with st.container(border=True):
     st.markdown("### 🚨 OFs que ultrapassaram o SLA de 3 dias úteis")
 
     try:
-        df_ofs_atrasadas = tabela_ofs_atrasadas(df)
+        df_2025 = df.copy()
+        df_2025["REQ_DATA"] = pd.to_datetime(df_2025.get("REQ_DATA"), errors="coerce")
+        df_2025 = df_2025[df_2025["REQ_DATA"].dt.year == 2025]
+    
+        df_ofs_atrasadas = tabela_ofs_atrasadas(df_2025)
+    
         if isinstance(df_ofs_atrasadas, pd.DataFrame) and not df_ofs_atrasadas.empty:
             st.dataframe(
                 df_ofs_atrasadas,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "REQUISICAO":     st.column_config.TextColumn("Requisição"),
-                    "DATA_REQUISICAO":st.column_config.TextColumn("Data REQ"),
-                    "OF":             st.column_config.TextColumn("OF"),
-                    "DATA_OF":        st.column_config.TextColumn("Data OF"),
-                    "INSUMOS":        st.column_config.TextColumn("Insumos")
+                    "REQUISICAO":      st.column_config.TextColumn("Requisição"),
+                    "DATA_REQUISICAO": st.column_config.TextColumn("Data REQ"),
+                    "OF":              st.column_config.TextColumn("OF"),
+                    "DATA_OF":         st.column_config.TextColumn("Data OF"),
+                    "INSUMOS":         st.column_config.TextColumn("Insumos")
                 },
             )
         else:
-            st.info("Nenhuma OF ultrapassou o SLA de 3 dias úteis.")
+            st.info("Nenhuma OF de requisições de 2025 ultrapassou o SLA de 3 dias úteis.")
     except Exception as e:
         st.warning(f"Não consegui gerar a tabela de OFs atrasadas: {e}")
 
@@ -979,10 +984,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
