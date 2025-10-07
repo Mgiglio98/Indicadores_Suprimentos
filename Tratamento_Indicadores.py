@@ -1361,12 +1361,13 @@ def tabela_ofs_atrasadas(
     agg = (
         base.groupby("OF_CDG", dropna=True)
             .agg(
-                EMPRENDIMENTO=("EMPRD_CDG", "first"),
+                EMPREENDIMENTO=("EMPRD_CDG", "first"),
                 EMPREENDIMENTO_DESC=("EMPRD_DESC", "first"),
                 REQUISICAO=("REQ_CDG", "min"),
                 DATA_REQUISICAO=("REQ_DATA", "min"),
                 DATA_OF=("OF_DATA", "min"),
-                INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
+                INSUMOS=("INSUMO_DESC",
+                         lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
             )
             .reset_index()
             .rename(columns={"OF_CDG": "OF"})
@@ -1402,7 +1403,7 @@ def tabela_ofs_atrasadas(
 
     return atrasadas[
         [
-            "EMPRENDIMENTO", "EMPREENDIMENTO_DESC",
+            "EMPREENDIMENTO", "EMPREENDIMENTO_DESC",
             "REQUISICAO", "DATA_REQUISICAO",
             "OF", "DATA_OF", "INSUMOS"
         ]
