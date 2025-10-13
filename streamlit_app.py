@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
+import io
 from pathlib import Path
 from datetime import datetime
 try:
@@ -904,6 +905,26 @@ with st.container(border=True):
     st.subheader("🚨 OFs que ultrapassaram o SLA — Requisições 2025")
     st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
 
+    # --- Download da tabela de OFs atrasadas ---
+    if isinstance(df_ofs_atrasadas, pd.DataFrame) and not df_ofs_atrasadas.empty:
+        # Cria o Excel em memória
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df_ofs_atrasadas.to_excel(writer, index=False, sheet_name="OFs_Atrasadas")
+        buffer.seek(0)
+    
+        # Gera nome com data de hoje
+        nome_arquivo = f"OFs_Atrasadas_{datetime.today().strftime('%Y-%m-%d')}.xlsx"
+    
+        st.download_button(
+            label="📥 Baixar tabela de OFs atrasadas (Excel)",
+            data=buffer,
+            file_name=nome_arquivo,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+    else:
+        st.info("Nenhuma OF atrasada encontrada para exportar.")
+
 # Carrega apenas uma vez
 if "df_anomalias" not in st.session_state:
     st.session_state["df_anomalias"] = carregar_anomalias(Path(__file__).parent)
@@ -961,4 +982,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
