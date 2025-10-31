@@ -398,40 +398,16 @@ with st.container(border=True):
     try:
         resumo, df_nunca = resumo_movimentacao_fornecedores(df_mov, anos=2)
 
-        # --- Linha de KPIs ---
-        c1, c2, c3, c4 = st.columns(4)
+        c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("Total cadastrados", _format_int_br(resumo["total_cadastrados"]))
         c2.metric("Cadastrados (últimos 2 anos)", _format_int_br(resumo["cadastrados_ult2a"]))
         c3.metric("Utilizados (últimos 2 anos)", _format_int_br(resumo["utilizados_ult2a"]))
         c4.metric("Nunca utilizados", _format_int_br(resumo["nunca_utilizados"]))
+        c5.metric("Cadastrados e utilizados (últimos 2 anos)", _format_int_br(resumo["cadastrados_e_utilizados"]))
 
-        # --- Expander com lista dos nunca utilizados ---
         with st.expander("🔎 Ver lista de fornecedores nunca utilizados"):
             if not df_nunca.empty:
-                st.dataframe(
-                    df_nunca,
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "FORN_CNPJ": st.column_config.TextColumn("CNPJ"),
-                        "FORN_RAZAO": st.column_config.TextColumn("Razão Social"),
-                        "FORN_FANTASIA": st.column_config.TextColumn("Nome Fantasia"),
-                        "FORN_UF": st.column_config.TextColumn("UF"),
-                        "FORN_DTCADASTRO": st.column_config.DatetimeColumn("Data de Cadastro", format="DD/MM/YYYY"),
-                    },
-                )
-
-                # Download da lista
-                buf = io.BytesIO()
-                with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-                    df_nunca.to_excel(writer, index=False, sheet_name="Nunca_Utilizados")
-                buf.seek(0)
-                st.download_button(
-                    "📥 Baixar lista (Excel)",
-                    data=buf,
-                    file_name=f"Nunca_Utilizados_{datetime.today().strftime('%Y-%m-%d')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                )
+                st.dataframe(df_nunca, use_container_width=True, hide_index=True)
             else:
                 st.caption("Nenhum fornecedor na condição 'nunca utilizado'.")
     except Exception as e:
@@ -1036,6 +1012,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
