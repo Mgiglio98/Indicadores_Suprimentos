@@ -150,3 +150,72 @@ def serie_fornecedores_cadastrados_por_ano(df_forn: pd.DataFrame,
                   .sort_values("ANO"))
 
     return serie
+
+# --- Loader da planilha de movimentação (materiais + serviços) ---
+def carregar_movimentacao(path: Path | None = None, sheet: int | str = 0) -> pd.DataFrame:
+    """
+    Lê a planilha com as colunas:
+    FORN_CNPJ | FORN_RAZAO | FORN_FANTASIA | FORN_CPFCNPJ | FORN_UF |
+    FORN_DTCADASTRO | FORN_QUEMCADASTROU | ULTIMO_PEDIDO | ULTIMA_BAIXA |
+    ULTIMA_MOVIMENTACAO | CATEGORIAS
+    """
+    base_dir = Path(__file__).parent
+    arq = path or (base_dir / "FornecedoresMovimentacao.xlsx")  # ajuste o nome se for diferente
+    df = pd.read_excel(
+        arq, sheet_name=sheet,
+        dtype={"FORN_CNPJ": "string", "FORN_CPFCNPJ": "string", "FORN_UF": "string"}
+    )
+
+    # Normalizações
+    for c in ["FORN_CNPJ", "FORN_RAZAO", "FORN_FANTASIA", "FORN_UF", "CATEGORIAS"]:
+        if c in df.columns:
+            df[c] = df[c].astype("string").str.strip()
+
+    # Datas robustas
+    for col in ["FORN_DTCADASTRO", "ULTIMO_PEDIDO", "ULTIMA_BAIXA", "ULTIMA_MOVIMENTACAO"]:
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce")
+
+    return df
+
+
+# --- Resumo direto usando apenas a nova planilha ---
+def resumo_movimentacao_fornecedores(df_mov: pd.DataFrame, anos: int = 2):
+    """
+    KPIs:
+      - total_cadastrados
+      - cadastrados_ult2a
+      - utilizados_ult2a
+      - nunca_utilizados
+
+    Retorna (resumo_dict, df_nunca_utilizados)
+    """
+    df = df_mov.copy()
+
+    # Garantir colunas mínimas
+    for c in ["FORN_CNPJ", "FORN_DTCADASTRO", "ULTIMA_MOVIMENTACAO"]:
+        if c not in df.columns:
+            raise KeyError(f"Coluna obrigatória ausente: {c}")
+
+    df["FORN_CNPJ"] = df["FORN_CNPJ"].astype("string").str.strip()
+    df["FORN_DTCADASTRO"] = pd.to_datetime(df["FORN_DTCADASTRO"], errors="coerce")
+    df["ULTIMA_MOVIMENTACAO"] = pd.to_datetime(df["ULTIMA_MOVIMENTACAO"], errors="coerce")
+
+    hoje = pd.Timestamp.today().normalize()
+    limite = hoje - pd.DateOffset(years=anos)
+
+    total_cadastrados = df["FORN_CNPJ"].nunique()
+    cadastrados_ult2a = df.loc[df["FORN_DTCADASTRO"] >= limite, "FORN_CNPJ"].nunique()
+    utilizados_ult2a  = df.loc[df["ULTIMA_MOVIMENTACAO"] >= limite, "FORN_CNPJ"].nunique()
+    nunca_utilizados  = df.loc[df["ULTIMA_MOVIMENTACAO"].isna(), "FORN_CNPJ"].nunique()
+
+    cols_exibir = [c for c in ["FORN_CNPJ","FORN_RAZAO","FORN_FANTASIA","FORN_UF","FORN_DTCADASTRO"] if c in df.columns]
+    df_nunca = df.loc[df["ULTIMA_MOVIMENTACAO"].isna(), cols_exibir].drop_duplicates().reset_index(drop=True)
+
+    resumo = {
+        "total_cadastrados": int(total_cadastrados),
+        "cadastrados_ult2a": int(cadastrados_ult2a),
+        "utilizados_ult2a": int(utilizados_ult2a),
+        "nunca_utilizados": int(nunca_utilizados),
+    }
+    return resumo, df_nunca
