@@ -183,6 +183,13 @@ def _load_df_erp():
     return carregar_bases()
 
 @st.cache_data(ttl=3600, show_spinner=False)
+def _load_df_mov():
+    """Carrega planilha FornecedoresMovimentacao.xlsx"""
+    return carregar_movimentacao()
+
+df_mov = _load_df_mov()
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def _load_df_forn():
     return carregar_fornecedores()
 
@@ -1029,6 +1036,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
