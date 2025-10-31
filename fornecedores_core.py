@@ -187,12 +187,10 @@ def resumo_movimentacao_fornecedores(df_mov: pd.DataFrame, anos: int = 2):
       - cadastrados_ult2a
       - utilizados_ult2a
       - nunca_utilizados
-
-    Retorna (resumo_dict, df_nunca_utilizados)
+      - cadastrados_e_utilizados_ult2a
     """
     df = df_mov.copy()
 
-    # Garantir colunas mínimas
     for c in ["FORN_CNPJ", "FORN_DTCADASTRO", "ULTIMA_MOVIMENTACAO"]:
         if c not in df.columns:
             raise KeyError(f"Coluna obrigatória ausente: {c}")
@@ -209,6 +207,11 @@ def resumo_movimentacao_fornecedores(df_mov: pd.DataFrame, anos: int = 2):
     utilizados_ult2a  = df.loc[df["ULTIMA_MOVIMENTACAO"] >= limite, "FORN_CNPJ"].nunique()
     nunca_utilizados  = df.loc[df["ULTIMA_MOVIMENTACAO"].isna(), "FORN_CNPJ"].nunique()
 
+    # 🔹 Novo: cadastrados nos últimos 2 anos E utilizados
+    mask_cad = df["FORN_DTCADASTRO"] >= limite
+    mask_uti = df["ULTIMA_MOVIMENTACAO"] >= limite
+    cadastrados_e_utilizados = df.loc[mask_cad & mask_uti, "FORN_CNPJ"].nunique()
+
     cols_exibir = [c for c in ["FORN_CNPJ","FORN_RAZAO","FORN_FANTASIA","FORN_UF","FORN_DTCADASTRO"] if c in df.columns]
     df_nunca = df.loc[df["ULTIMA_MOVIMENTACAO"].isna(), cols_exibir].drop_duplicates().reset_index(drop=True)
 
@@ -217,5 +220,7 @@ def resumo_movimentacao_fornecedores(df_mov: pd.DataFrame, anos: int = 2):
         "cadastrados_ult2a": int(cadastrados_ult2a),
         "utilizados_ult2a": int(utilizados_ult2a),
         "nunca_utilizados": int(nunca_utilizados),
+        "cadastrados_e_utilizados": int(cadastrados_e_utilizados),
     }
+
     return resumo, df_nunca
