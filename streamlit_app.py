@@ -48,6 +48,8 @@ from fornecedores_core import (
     total_empresas_cadastradas,
     serie_fornecedores_ativos_ultimos_anos,
     serie_fornecedores_cadastrados_por_ano,
+    carregar_movimentacao,
+    resumo_movimentacao_fornecedores
 )
 
 from Tratamento_Anomalias import (
@@ -382,6 +384,51 @@ with st.container(border=True):
     r2c5.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
     r2c6.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
     r2c7.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
+
+with st.container(border=True):
+    st.subheader("🏢 Visão Geral de Fornecedores — Cadastro × Utilização (Materiais + Serviços)")
+
+    try:
+        resumo, df_nunca = resumo_movimentacao_fornecedores(df_mov, anos=2)
+
+        # --- Linha de KPIs ---
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total cadastrados", _format_int_br(resumo["total_cadastrados"]))
+        c2.metric("Cadastrados (últimos 2 anos)", _format_int_br(resumo["cadastrados_ult2a"]))
+        c3.metric("Utilizados (últimos 2 anos)", _format_int_br(resumo["utilizados_ult2a"]))
+        c4.metric("Nunca utilizados", _format_int_br(resumo["nunca_utilizados"]))
+
+        # --- Expander com lista dos nunca utilizados ---
+        with st.expander("🔎 Ver lista de fornecedores nunca utilizados"):
+            if not df_nunca.empty:
+                st.dataframe(
+                    df_nunca,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "FORN_CNPJ": st.column_config.TextColumn("CNPJ"),
+                        "FORN_RAZAO": st.column_config.TextColumn("Razão Social"),
+                        "FORN_FANTASIA": st.column_config.TextColumn("Nome Fantasia"),
+                        "FORN_UF": st.column_config.TextColumn("UF"),
+                        "FORN_DTCADASTRO": st.column_config.DatetimeColumn("Data de Cadastro", format="DD/MM/YYYY"),
+                    },
+                )
+
+                # Download da lista
+                buf = io.BytesIO()
+                with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+                    df_nunca.to_excel(writer, index=False, sheet_name="Nunca_Utilizados")
+                buf.seek(0)
+                st.download_button(
+                    "📥 Baixar lista (Excel)",
+                    data=buf,
+                    file_name=f"Nunca_Utilizados_{datetime.today().strftime('%Y-%m-%d')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                )
+            else:
+                st.caption("Nenhum fornecedor na condição 'nunca utilizado'.")
+    except Exception as e:
+        st.warning(f"Não foi possível gerar a visão de fornecedores: {e}")
 
 with st.container(border=True):
     st.subheader("📦 OFs Básicas vs Específicas — 2025")
@@ -982,5 +1029,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
