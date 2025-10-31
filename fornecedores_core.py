@@ -160,7 +160,7 @@ def carregar_movimentacao(path: Path | None = None, sheet: int | str = 0) -> pd.
     ULTIMA_MOVIMENTACAO | CATEGORIAS
     """
     base_dir = Path(__file__).parent
-    arq = path or (base_dir / "FornecedoresMovimentacao.xlsx")  # ajuste o nome se for diferente
+    arq = path or (base_dir / "AnaliseFornecedores.xlsx")  # ajuste o nome se for diferente
     df = pd.read_excel(
         arq, sheet_name=sheet,
         dtype={"FORN_CNPJ": "string", "FORN_CPFCNPJ": "string", "FORN_UF": "string"}
