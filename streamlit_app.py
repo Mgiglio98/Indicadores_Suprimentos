@@ -390,12 +390,12 @@ with st.container(border=True):
     r2c5.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
 
 with st.container(border=True):
-    st.subheader("🏢 Visão Geral de Fornecedores — Cadastro × Utilização (Materiais + Serviços)")
+    st.subheader("Visão Geral de Fornecedores — Cadastro × Utilização (Materiais + Serviços)")
 
     try:
         resumo, df_nunca = resumo_movimentacao_fornecedores(df_mov, anos=2)
 
-        c1, c2, c3, c4, c5 = st.columns(5)
+        spacer1, c1, c2, c3, c4, c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
         c1.metric("Total cadastrados", _format_int_br(resumo["total_cadastrados"]))
         c2.metric("Cadastrados (últimos 2 anos)", _format_int_br(resumo["cadastrados_ult2a"]))
         c3.metric("Utilizados (últimos 2 anos)", _format_int_br(resumo["utilizados_ult2a"]))
@@ -411,7 +411,7 @@ with st.container(border=True):
         st.warning(f"Não foi possível gerar a visão de fornecedores: {e}")
 
 with st.container(border=True):
-    st.subheader("📦 OFs Básicas vs Específicas — 2025")
+    st.subheader("OFs Básicas vs Específicas — 2025")
     df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2025)
 
     if df_basicos.empty:
@@ -443,7 +443,7 @@ with st.container(border=True):
         st.altair_chart(bars + labels, use_container_width=True)
 
 with st.container(border=True):
-    st.subheader("🧱 Materiais Básicos — Fornecimento por local")
+    st.subheader("Materiais Básicos — Fornecimento por local")
 
     st.markdown("**Fornecedores aptos por UF**")
     df_res = fornecedores_basicos_por_local_cadastro(df_forn, df, locais=("RJ","SP","SC"))
@@ -468,7 +468,7 @@ with st.container(border=True):
 
 # ---------- TOP fornecedores ----------
 with st.container(border=True):
-    st.subheader("🥇 TOP fornecedores por UF")
+    st.subheader("TOP fornecedores por UF")
     c1, c2 = st.columns(2)
 
     with c1:
@@ -515,7 +515,7 @@ with st.container(border=True):
 
 # ---------- Série de Fornecedores Ativos ----------
 with st.container(border=True):
-    st.subheader("📊 Fornecedores ativos por ano")
+    st.subheader("Fornecedores ativos por ano")
 
     serie, resumo = serie_fornecedores_ativos_ultimos_anos(df, anos=10)
     if isinstance(serie, pd.DataFrame) and not serie.empty:
@@ -553,11 +553,11 @@ with st.container(border=True):
 
 # ---------- OFs destaque ----------
 with st.container(border=True):
-    st.subheader("🛒 Principais Vendas - Últimos 10 anos")
+    st.subheader("Principais Compras - Últimos 10 anos")
     c1, c2 = st.columns(2)
 
     with c1:
-        st.markdown("**🏆 Maior OF**")
+        st.markdown("**Maior OF**")
         df_max = _safe(maior_ordem_fornecimento, df)
         if isinstance(df_max, pd.DataFrame) and not df_max.empty:
             df_max = _round_cols(df_max, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
@@ -607,7 +607,7 @@ with st.container(border=True):
             st.caption(f"Não consegui listar os itens da OF: {e}")
 
     with c2:
-        st.markdown("**📉 Menor OF**")
+        st.markdown("**Menor OF**")
         df_min = _safe(menor_ordem_fornecimento, df)
         if isinstance(df_min, pd.DataFrame) and not df_min.empty:
             df_min = _round_cols(df_min, ["VALOR_TOTAL", "ITEM_PRCUNTPED", "PRCTTL_INSUMO", "TOTAL"])
@@ -659,7 +659,7 @@ with st.container(border=True):
 
 # ---------- Volumes por período ----------
 with st.container(border=True):
-    st.subheader("📈 Volumes por período")
+    st.subheader("Volumes por período")
 
     c1, c2 = st.columns(2)
     # Top 3 meses (últimos 12 meses)
@@ -705,7 +705,7 @@ with st.container(border=True):
 
 # ---------- Série de Categorias ----------
 with st.container(border=True):
-    st.subheader("📦 Volume por Categoria")
+    st.subheader("Volume por Categoria")
 
     st.markdown("**Mais compradas (últimos 5 anos)**")
     df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
@@ -785,7 +785,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
-    st.subheader("📅 Requisições e OFs — 2025")
+    st.subheader("Requisições e OFs — 2025")
 
     df_mes = _safe(requisicoes_ofs_por_mes, df, ano=2025)
     if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
@@ -835,7 +835,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
-    st.subheader("📅 Média de Requisições por Empreendimento — 2025")
+    st.subheader("Média de Requisições por Empreendimento — 2025")
 
     df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
@@ -879,7 +879,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
-    st.subheader("⏱️ Tempo médio em dias: REQ → OF — 2025")
+    st.subheader("Tempo médio em dias: REQ → OF — 2025")
 
     df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
@@ -929,7 +929,7 @@ with st.container(border=True):
 
 with st.container(border=True):
     df_ofs_atrasadas = tabela_ofs_atrasadas(df)
-    st.subheader("🚨 OFs que ultrapassaram o SLA — Requisições 2025")
+    st.subheader("OFs que ultrapassaram o SLA — Requisições 2025")
     st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
 
     # --- Download da tabela de OFs atrasadas ---
@@ -957,7 +957,7 @@ if "df_anomalias" not in st.session_state:
     st.session_state["df_anomalias"] = carregar_anomalias(Path(__file__).parent)
 
 with st.container(border=True):
-    st.subheader("📊 Anomalias por Mês")
+    st.subheader("Anomalias por Mês")
 
     df_anomalias = st.session_state["df_anomalias"].copy()
 
@@ -1009,9 +1009,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
 
