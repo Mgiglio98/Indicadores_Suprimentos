@@ -372,25 +372,22 @@ with st.container(border=True):
         total_ofs_2024 = total_ofs_2025 = None
 
    # Linha 1 centralizada (5 KPIs)
-    spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, r1c6, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 2, 1])
+    spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
 
     r1c1.metric("Valor médio OF (10a)", _format_brl(round(media_of, 2)) if media_of is not None else "—")
     r1c2.metric("Valor médio por Insumo (10a)", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     r1c3.metric("% de OFs Básicas (12m)", _format_pct_br(pct_bas) if pct_bas is not None else "—")
-    r1c4.metric("Fornecedores Cadastrados", f"{total_cad}" if total_cad is not None else "—")
-    r1c5.metric("Fornecedores utilizados (3a)", _format_int_br(qtd_vend) if qtd_vend is not None else "—")
-    r1c6.metric("Cadastrados último ano", f"{cad_no_ano}" if cad_no_ano is not None else "—")
+    r1c4.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
+    r1c5.metric("Tempo médio OF (5a)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
     
     # Linha 2 centralizada (4 KPIs)
-    spacer1, r2c1, r2c2, r2c3, r2c4, r2c5, r2c6, r2c7, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 2, 2, 1])
+    spacer1, r2c1, r2c2, r2c3, r2c4, r2c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
 
     r2c1.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
-    r2c2.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
-    r2c3.metric("Tempo médio OF (5a)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
-    r2c4.metric("OFs < R$ 300 - 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
-    r2c5.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
-    r2c6.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
-    r2c7.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
+    r2c2.metric("OFs < R$ 300 - 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
+    r2c3.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
+    r2c4.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
+    r2c5.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
 
 with st.container(border=True):
     st.subheader("🏢 Visão Geral de Fornecedores — Cadastro × Utilização (Materiais + Serviços)")
@@ -1012,6 +1009,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
