@@ -41,7 +41,7 @@ from Tratamento_Indicadores import (
     ofs_basico_vs_nao_por_mes,
     fornecedor_top_por_uf_emp,
     tabela_ofs_atrasadas,
-    recorrencia_materiais_basicos
+    recorrencia_materiais_basicos_2025
 )
 
 from fornecedores_core import (
@@ -444,63 +444,39 @@ with st.container(border=True):
         st.altair_chart(bars + labels, use_container_width=True)
 
 with st.container(border=True):
-    st.subheader("Recorrência de Materiais Básicos — Requisições 2025")
+    st.subheader("Recorrência de Materiais Básicos — Requisições 2025 (≥ 50%)")
 
     try:
-        # Sugestão de limite de recorrência (fixo 25%)
-        limite_recorrencia = 0.25
-
-        df_rec = recorrencia_materiais_basicos(df_erp, ano=2025, min_ratio=limite_recorrencia)
-
-        if df_rec.empty:
-            st.info("Nenhum dado de recorrência encontrado para 2025.")
-        else:
-            # Formatação de % (duas casas)
-            df_vis = df_rec.copy()
-            df_vis["RECORRÊNCIA (%)]"] = (df_vis["MEDIA_RECORRENCIA"] * 100).round(2)
-
-            df_vis = df_vis[[
-                "EMPRD",
-                "EMPRD_DESC",
-                "INSUMO_BASICO",
-                "QTD_REQS_INSUMO",
-                "TOTAL_REQS_OBRA",
-                "RECORRÊNCIA (%)]"
-            ]]
-
-            st.caption(f"Critério de recorrência: insumo aparece em ≥ {int(limite_recorrencia*100)}% das REQs da obra no ano.")
-            st.dataframe(
-                df_vis,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "EMPRD": st.column_config.TextColumn("EMPRD"),
-                    "EMPRD_DESC": st.column_config.TextColumn("EMPREENDIMENTO"),
-                    "INSUMO_BASICO": st.column_config.TextColumn("Insumo Básico"),
-                    "QTD_REQS_INSUMO": st.column_config.NumberColumn("Qtd. Requisições com Insumo", format="%.0f"),
-                    "TOTAL_REQS_OBRA": st.column_config.NumberColumn("Total de Requisições da Obra", format="%.0f"),
-                    "RECORRÊNCIA (%)]" : st.column_config.NumberColumn("Recorrência (%)", format="%.2f")
-                }
-            )
-
-            # (Opcional) Mostrar apenas recorrentes, ordenando por maior recorrência
-            with st.expander("🔎 Ver apenas recorrentes (≥ 25%)"):
-                df_only = df_rec[df_rec["MEDIA_RECORRENCIA"] >= limite_recorrencia].copy()
-                if df_only.empty:
-                    st.caption("Nenhum insumo bateu o critério neste ano.")
-                else:
-                    df_only["RECORRÊNCIA (%)"] = (df_only["MEDIA_RECORRENCIA"] * 100).round(2)
-                    st.dataframe(
-                        df_only[[
-                            "EMPRD","EMPRD_DESC","INSUMO_BASICO",
-                            "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","RECORRÊNCIA (%)"
-                        ]].sort_values(["RECORRÊNCIA (%)","QTD_REQS_INSUMO"], ascending=[False, False]),
-                        use_container_width=True,
-                        hide_index=True
-                    )
-
+        df_rec = recorrencia_materiais_basicos_2025(df_erp, corte=0.50)
     except Exception as e:
-        st.warning(f"Erro ao gerar recorrência: {e}")
+        df_rec = pd.DataFrame()
+        st.warning(f"Não consegui calcular recorrência_materiais_basicos_2025: {e}")
+
+    if df_rec.empty:
+        st.info("Nenhum dado de recorrência encontrado para 2025.")
+    else:
+        # exibição formatada
+        df_vis = df_rec.copy()
+        df_vis["RECORRÊNCIA (%)"] = (df_vis["MEDIA_RECORRENCIA"] * 100).round(2)
+        df_vis = df_vis.rename(columns={
+            "EMPRD": "EMPRD",
+            "EMPRD_DESC": "EMPREENDIMENTO",
+            "INSUMO_BASICO": "Insumo Básico",
+            "QTD_REQS_INSUMO": "Qtd. Requisições com Insumo",
+            "TOTAL_REQS_OBRA": "Total de Requisições da Obra"
+        })[[
+            "EMPRD","EMPREENDIMENTO","Insumo Básico",
+            "Qtd. Requisições com Insumo","Total de Requisições da Obra","RECORRÊNCIA (%)"
+        ]]
+
+        st.dataframe(
+            df_vis,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "RECORRÊNCIA (%)": st.column_config.NumberColumn("Recorrência (%)", format="%.2f")
+            }
+        )
 
 with st.container(border=True):
     st.subheader("Materiais Básicos — Fornecimento por local")
@@ -1069,6 +1045,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
