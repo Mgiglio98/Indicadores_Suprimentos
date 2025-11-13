@@ -1428,13 +1428,13 @@ def recorrencia_materiais_basicos(df, ano=2025):
     df = df[df["TIPO_MATERIAL"].str.upper() == "BÁSICO"]
 
     resultados = []
-    for obra, grupo_obra in df.groupby("OBRA"):
+    for obra, grupo_obra in df.groupby("EMPRD"):
         total_reqs = grupo_obra["REQ_CDG"].nunique()
         for insumo, grupo_insumo in grupo_obra.groupby("INSUMO_DESC"):
             qtd_reqs_insumo = grupo_insumo["REQ_CDG"].nunique()
             freq_relativa = qtd_reqs_insumo / total_reqs if total_reqs > 0 else 0
             resultados.append({
-                "OBRA": obra,
+                "EMPRD": obra,
                 "INSUMO_BÁSICO": insumo,
                 "QTD_REQS_INSUMO": qtd_reqs_insumo,
                 "TOTAL_REQS_OBRA": total_reqs,
