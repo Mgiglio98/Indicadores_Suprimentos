@@ -1413,3 +1413,69 @@ def tabela_ofs_atrasadas(
             "OF", "DATA_OF", "INSUMOS"
         ]
     ]
+
+def recorrencia_basicos_ano_corrente(
+    df: pd.DataFrame,
+    ano: int | None = None,
+    col_empr: str = "EMPRD",
+    col_empr_desc: str = "EMPRD_DESC",
+    col_req: str = "REQ_CDG",
+    col_insumo: str = "INSUMO_CDG",
+    col_insumo_desc: str = "INSUMO_DESC",
+    col_tipo: str = "TIPO_MATERIAL",
+    col_data: str = "REQ_DATA"
+) -> pd.DataFrame:
+    """
+    Retorna obras e insumos básicos recorrentes no ano (média de intervalo <= 2).
+
+    Colunas: EMPRD | EMPRD_DESC | INSUMO_DESC | MEDIA_INTERVALO_REQ | QTD_REQUISICOES
+    """
+    if ano is None:
+        ano = pd.Timestamp.today().year
+
+    base = df.copy()
+    base[col_data] = pd.to_datetime(base[col_data], errors="coerce")
+    base = base.dropna(subset=[col_data, col_empr, col_insumo, col_req])
+
+    # filtra apenas o ano atual
+    base = base[base[col_data].dt.year == ano]
+
+    # apenas materiais básicos
+    base = base[base[col_tipo] == "BÁSICO"].copy()
+    if base.empty:
+        return pd.DataFrame(columns=[
+            "EMPRD","EMPRD_DESC","INSUMO_DESC","MEDIA_INTERVALO_REQ","QTD_REQUISICOES"
+        ])
+
+    base = base.sort_values([col_empr, col_insumo, col_data])
+    resultados = []
+
+    for (obra, insumo), grupo in base.groupby([col_empr, col_insumo]):
+        grupo = grupo.sort_values(col_data)
+        reqs = grupo[col_req].drop_duplicates().tolist()
+        if len(reqs) < 2:
+            continue
+
+        posicoes = list(range(len(reqs)))
+        intervalos = np.diff(posicoes)
+        media_int = float(np.mean(intervalos))
+
+        if media_int <= 2:  # apenas insumos realmente recorrentes
+            resultados.append({
+                "EMPRD": obra,
+                "EMPRD_DESC": grupo[col_empr_desc].iloc[0] if col_empr_desc in grupo.columns else None,
+                "INSUMO_DESC": grupo[col_insumo_desc].iloc[0] if col_insumo_desc in grupo.columns else None,
+                "MEDIA_INTERVALO_REQ": round(media_int, 2),
+                "QTD_REQUISICOES": len(reqs)
+            })
+
+    if not resultados:
+        return pd.DataFrame(columns=[
+            "EMPRD","EMPRD_DESC","INSUMO_DESC","MEDIA_INTERVALO_REQ","QTD_REQUISICOES"
+        ])
+
+    res = pd.DataFrame(resultados).sort_values(
+        ["MEDIA_INTERVALO_REQ", "QTD_REQUISICOES"], ascending=[True, False]
+    ).reset_index(drop=True)
+
+    return res
