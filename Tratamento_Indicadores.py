@@ -1416,71 +1416,70 @@ def tabela_ofs_atrasadas(
 
 def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) -> pd.DataFrame:
     """
-    Calcula a recorrência de materiais básicos por obra no ano de 2025.
-    Considera apenas obras com >= 3 requisições no ano.
-    Corrige duplicidades de insumos com especificações diferentes na mesma requisição.
+    Passos:
+      1) Filtra REQ_DATA para 2025
+      2) Conta REQ_CDG por obra (TOTAL_REQS_OBRA)
+      3) Mantém apenas obras com TOTAL_REQS_OBRA >= 3
+      4) Filtra só BÁSICOS e conta LINHAS por (obra, insumo)
+      5) Calcula média = QTD_REQS_INSUMO / TOTAL_REQS_OBRA e filtra >= corte
+    Retorna colunas: EMPRD | EMPRD_DESC | INSUMO_BASICO | QTD_REQS_INSUMO | TOTAL_REQS_OBRA | MEDIA_RECORRENCIA
     """
-
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
     base = base[base["REQ_DATA_DT"].dt.year == 2025]
 
-    # --- Filtra apenas materiais básicos
-    base = base[base.get("TIPO_MATERIAL", "").astype(str).str.upper() == "BÁSICO"]
-
-    if base.empty:
-        return pd.DataFrame(columns=[
-            "EMPRD","EMPRD_DESC","INSUMO_BASICO",
-            "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
-        ])
-
-    # --- Cria identificador único de insumo dentro da requisição (para considerar variações)
-    base["REQ_INSUMO_ID"] = base["REQ_CDG"].astype(str) + "_" + base["INSUMO_DESC"].astype(str)
-
-    # --- Conta quantas requisições totais a obra teve (distintas)
-    total_por_obra = (
-        base.drop_duplicates(subset=["EMPRD", "REQ_CDG"])
-            .groupby("EMPRD")["REQ_CDG"]
-            .nunique()
+    # 2) total de REQs distintas por obra
+    tot_por_obra = (
+        base.dropna(subset=["EMPRD","REQ_CDG"])
+            .drop_duplicates(subset=["EMPRD","REQ_CDG"])
+            .groupby("EMPRD")["REQ_CDG"].count()
             .rename("TOTAL_REQS_OBRA")
             .reset_index()
     )
 
-    # --- Mantém apenas obras com pelo menos 3 requisições
-    obras_validas = total_por_obra[total_por_obra["TOTAL_REQS_OBRA"] >= 3]["EMPRD"].unique()
+    # 🔹 3) mantém apenas obras com pelo menos 3 requisições
+    obras_validas = tot_por_obra[tot_por_obra["TOTAL_REQS_OBRA"] >= 3]["EMPRD"].unique()
     base = base[base["EMPRD"].isin(obras_validas)]
+    tot_por_obra = tot_por_obra[tot_por_obra["EMPRD"].isin(obras_validas)]
 
-    # --- Conta quantas vezes o insumo aparece por obra (considerando REQ+INSUMO)
-    qtd_por_insumo = (
-        base.drop_duplicates(subset=["EMPRD", "REQ_INSUMO_ID"])
-            .groupby(["EMPRD", "INSUMO_DESC"])
-            .size()
-            .reset_index(name="QTD_REQS_INSUMO")
+    # 4) filtra apenas materiais básicos e conta LINHAS por (obra, insumo)
+    bas = base[base.get("TIPO_MATERIAL","").astype(str).str.upper() == "BÁSICO"].copy()
+    if bas.empty:
+        return pd.DataFrame(columns=[
+            "EMPRD","EMPRD_DESC","INSUMO_BASICO","QTD_REQS_INSUMO",
+            "TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
+        ])
+
+    qtd_insumo = (
+        bas.groupby(["EMPRD","INSUMO_DESC"])
+           .size()
+           .reset_index(name="QTD_REQS_INSUMO")
     )
 
-    # --- Junta nome da obra e total de REQs
+    # nome da obra
     nomes = (
         base.groupby("EMPRD")["EMPRD_DESC"]
-            .agg(lambda s: s.dropna().astype(str).iloc[0])
+            .agg(lambda s: s.dropna().astype(str).iloc[0] if len(s.dropna()) else None)
             .reset_index()
     )
 
-    df_final = (
-        qtd_por_insumo
-        .merge(total_por_obra, on="EMPRD", how="left")
-        .merge(nomes, on="EMPRD", how="left")
+    # 5) junta e calcula média
+    out = (
+        qtd_insumo.merge(tot_por_obra, on="EMPRD", how="left")
+                  .merge(nomes,       on="EMPRD", how="left")
+                  .rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
     )
+    out["MEDIA_RECORRENCIA"] = (out["QTD_REQS_INSUMO"] / out["TOTAL_REQS_OBRA"]).astype(float)
 
-    df_final["MEDIA_RECORRENCIA"] = (df_final["QTD_REQS_INSUMO"] / df_final["TOTAL_REQS_OBRA"]).round(4)
+    # aplica corte (padrão 50%)
+    out = out[out["MEDIA_RECORRENCIA"] >= float(corte)].copy()
 
-    # --- Filtra recorrentes >= corte (ex: 0.50 = 50%)
-    df_final = df_final[df_final["MEDIA_RECORRENCIA"] >= corte]
+    # ordenação e tipos
+    out = out.sort_values(["EMPRD","MEDIA_RECORRENCIA"], ascending=[True, False]).reset_index(drop=True)
+    out["QTD_REQS_INSUMO"]  = out["QTD_REQS_INSUMO"].astype(int)
+    out["TOTAL_REQS_OBRA"]  = out["TOTAL_REQS_OBRA"].astype(int)
 
-    # --- Organiza e renomeia
-    df_final = df_final.rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
-    df_final = df_final[
-        ["EMPRD", "EMPRD_DESC", "INSUMO_BASICO",
-         "QTD_REQS_INSUMO", "TOTAL_REQS_OBRA", "MEDIA_RECORRENCIA"]
-    ].sort_values(["EMPRD", "MEDIA_RECORRENCIA"], ascending=[True, False])
-
-    return df_final.reset_index(drop=True)
+    return out[[
+        "EMPRD","EMPRD_DESC","INSUMO_BASICO",
+        "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
+    ]]
