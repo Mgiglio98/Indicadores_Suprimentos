@@ -1416,22 +1416,12 @@ def tabela_ofs_atrasadas(
 
 def recorrencia_materiais_basicos(df: pd.DataFrame, ano: int = 2025, min_ratio: float | None = None) -> pd.DataFrame:
     """
-    Retorna, por obra (EMPRD) e insumo básico (INSUMO_DESC), a recorrência:
-      - QTD_REQS_INSUMO: nº de REQs distintas do ano com esse insumo
-      - TOTAL_REQS_OBRA: nº total de REQs distintas da obra no ano
-      - MEDIA_RECORRENCIA: QTD_REQS_INSUMO / TOTAL_REQS_OBRA (0–1)
-      - RECORRENTE: True se MEDIA_RECORRENCIA >= min_ratio (se informado)
-    Colunas de saída:
-      EMPRD | EMPRD_DESC | INSUMO_BASICO | QTD_REQS_INSUMO | TOTAL_REQS_OBRA | MEDIA_RECORRENCIA
+    Calcula a recorrência de insumos básicos por obra no ano especificado.
+    Exemplo: se a obra 2508 teve 12 REQs e o cimento aparece em 4 → 33,33%.
     """
-
     base = df.copy()
-
-    # Filtro por ano da REQ
     base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
     base = base[base["REQ_DATA_DT"].dt.year == int(ano)]
-
-    # Mantém só BÁSICO (sua coluna é TIPO_MATERIAL)
     base = base[base.get("TIPO_MATERIAL", "").astype(str).str.upper() == "BÁSICO"]
 
     if base.empty:
@@ -1440,50 +1430,47 @@ def recorrencia_materiais_basicos(df: pd.DataFrame, ano: int = 2025, min_ratio: 
             "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA","RECORRENTE"
         ])
 
-    # Totais de REQ por obra (REQ_CDG distintas)
+    # Total de requisições distintas por obra (base total do denominador)
     total_por_obra = (
         base.dropna(subset=["EMPRD","REQ_CDG"])
             .drop_duplicates(subset=["EMPRD","REQ_CDG"])
             .groupby("EMPRD")["REQ_CDG"].nunique()
             .rename("TOTAL_REQS_OBRA")
-            .astype(int)
     )
 
-    # Qtd de REQs da obra em que o INSUMO aparece (contagem de REQ_CDG distintas no par obra-insumo)
+    # Total de requisições em que o insumo aparece (numerador)
     reqs_por_insumo_obra = (
         base.dropna(subset=["EMPRD","INSUMO_DESC","REQ_CDG"])
             .drop_duplicates(subset=["EMPRD","INSUMO_DESC","REQ_CDG"])
             .groupby(["EMPRD","INSUMO_DESC"])["REQ_CDG"].nunique()
             .rename("QTD_REQS_INSUMO")
-            .astype(int)
             .reset_index()
     )
 
-    # Junta com TOTAL_REQS_OBRA
+    # Junta com totais da obra
     out = reqs_por_insumo_obra.merge(total_por_obra.reset_index(), on="EMPRD", how="left")
 
-    # Puxa EMPRD_DESC (primeira ocorrência da obra no ano)
+    # Puxa o nome da obra (EMPRD_DESC)
     nomes = (
-        base.dropna(subset=["EMPRD"])
-            .groupby("EMPRD")["EMPRD_DESC"]
+        base.groupby("EMPRD")["EMPRD_DESC"]
             .agg(lambda s: s.dropna().astype(str).iloc[0] if len(s.dropna()) else None)
             .reset_index()
     )
     out = out.merge(nomes, on="EMPRD", how="left")
 
-    # Calcula a razão
+    # Calcula média de recorrência
     out["MEDIA_RECORRENCIA"] = (out["QTD_REQS_INSUMO"] / out["TOTAL_REQS_OBRA"]).fillna(0.0)
 
-    # Renomeia coluna do insumo e ordena
+    # Formata
     out = out.rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
     out = out[[
         "EMPRD","EMPRD_DESC","INSUMO_BASICO",
         "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
-    ]].sort_values(["MEDIA_RECORRENCIA","QTD_REQS_INSUMO"], ascending=[False, False]).reset_index(drop=True)
+    ]].sort_values(["EMPRD","MEDIA_RECORRENCIA"], ascending=[True,False]).reset_index(drop=True)
 
-    # Marcação de recorrência (opcional)
+    # Marca recorrentes (ex: ≥ 25%)
     if min_ratio is not None:
-        out["RECORRENTE"] = (out["MEDIA_RECORRENCIA"] >= float(min_ratio))
+        out["RECORRENTE"] = out["MEDIA_RECORRENCIA"] >= float(min_ratio)
     else:
         out["RECORRENTE"] = pd.NA
 
