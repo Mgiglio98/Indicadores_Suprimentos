@@ -1416,70 +1416,73 @@ def tabela_ofs_atrasadas(
 
 def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) -> pd.DataFrame:
     """
-    Passos:
-      1) Filtra REQ_DATA para 2025
-      2) Conta REQ_CDG por obra (TOTAL_REQS_OBRA)
-      3) Mantém apenas obras com TOTAL_REQS_OBRA >= 3
-      4) Filtra só BÁSICOS e conta LINHAS por (obra, insumo)
-      5) Calcula média = QTD_REQS_INSUMO / TOTAL_REQS_OBRA e filtra >= corte
-    Retorna colunas: EMPRD | EMPRD_DESC | INSUMO_BASICO | QTD_REQS_INSUMO | TOTAL_REQS_OBRA | MEDIA_RECORRENCIA
+    Calcula a recorrência de materiais básicos por obra no ano de 2025.
+    - Considera apenas obras com >= 3 requisições no ano
+    - Conta quantas requisições distintas possuem cada insumo básico
+    - Calcula a proporção e filtra recorrência >= corte (ex.: 50%)
     """
+
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
     base = base[base["REQ_DATA_DT"].dt.year == 2025]
 
-    # 2) total de REQs distintas por obra
-    tot_por_obra = (
-        base.dropna(subset=["EMPRD","REQ_CDG"])
-            .drop_duplicates(subset=["EMPRD","REQ_CDG"])
-            .groupby("EMPRD")["REQ_CDG"].count()
+    # --- Conta total de requisições por obra ---
+    total_reqs = (
+        base.drop_duplicates(subset=["EMPRD", "REQ_CDG"])
+            .groupby("EMPRD")["REQ_CDG"]
+            .nunique()
             .rename("TOTAL_REQS_OBRA")
             .reset_index()
     )
 
-    # 🔹 3) mantém apenas obras com pelo menos 3 requisições
-    obras_validas = tot_por_obra[tot_por_obra["TOTAL_REQS_OBRA"] >= 3]["EMPRD"].unique()
+    # --- Filtra apenas obras com 3 ou mais requisições ---
+    obras_validas = total_reqs[total_reqs["TOTAL_REQS_OBRA"] >= 3]["EMPRD"].unique()
     base = base[base["EMPRD"].isin(obras_validas)]
-    tot_por_obra = tot_por_obra[tot_por_obra["EMPRD"].isin(obras_validas)]
+    total_reqs = total_reqs[total_reqs["EMPRD"].isin(obras_validas)]
 
-    # 4) filtra apenas materiais básicos e conta LINHAS por (obra, insumo)
-    bas = base[base.get("TIPO_MATERIAL","").astype(str).str.upper() == "BÁSICO"].copy()
+    # --- Filtra apenas materiais básicos ---
+    bas = base[base.get("TIPO_MATERIAL", "").astype(str).str.upper() == "BÁSICO"].copy()
     if bas.empty:
         return pd.DataFrame(columns=[
-            "EMPRD","EMPRD_DESC","INSUMO_BASICO","QTD_REQS_INSUMO",
-            "TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
+            "EMPRD", "EMPRD_DESC", "INSUMO_BASICO",
+            "QTD_REQS_INSUMO", "TOTAL_REQS_OBRA", "MEDIA_RECORRENCIA"
         ])
 
-    qtd_insumo = (
-        bas.groupby(["EMPRD","INSUMO_DESC"])
-           .size()
-           .reset_index(name="QTD_REQS_INSUMO")
+    # --- Conta requisições distintas por obra e insumo (ignora linhas repetidas da mesma REQ) ---
+    qtd_reqs_insumo = (
+        bas.drop_duplicates(subset=["EMPRD", "REQ_CDG", "INSUMO_DESC"])
+           .groupby(["EMPRD", "INSUMO_DESC"])["REQ_CDG"]
+           .nunique()
+           .rename("QTD_REQS_INSUMO")
+           .reset_index()
     )
 
-    # nome da obra
+    # --- Junta com total de requisições e nome da obra ---
     nomes = (
         base.groupby("EMPRD")["EMPRD_DESC"]
-            .agg(lambda s: s.dropna().astype(str).iloc[0] if len(s.dropna()) else None)
+            .agg(lambda s: s.dropna().astype(str).iloc[0])
             .reset_index()
     )
 
-    # 5) junta e calcula média
     out = (
-        qtd_insumo.merge(tot_por_obra, on="EMPRD", how="left")
-                  .merge(nomes,       on="EMPRD", how="left")
-                  .rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
+        qtd_reqs_insumo
+        .merge(total_reqs, on="EMPRD", how="left")
+        .merge(nomes, on="EMPRD", how="left")
+        .rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
     )
-    out["MEDIA_RECORRENCIA"] = (out["QTD_REQS_INSUMO"] / out["TOTAL_REQS_OBRA"]).astype(float)
 
-    # aplica corte (padrão 50%)
-    out = out[out["MEDIA_RECORRENCIA"] >= float(corte)].copy()
+    # --- Calcula média de recorrência ---
+    out["MEDIA_RECORRENCIA"] = (out["QTD_REQS_INSUMO"] / out["TOTAL_REQS_OBRA"]).round(4)
 
-    # ordenação e tipos
-    out = out.sort_values(["EMPRD","MEDIA_RECORRENCIA"], ascending=[True, False]).reset_index(drop=True)
-    out["QTD_REQS_INSUMO"]  = out["QTD_REQS_INSUMO"].astype(int)
-    out["TOTAL_REQS_OBRA"]  = out["TOTAL_REQS_OBRA"].astype(int)
+    # --- Filtra apenas recorrentes (>= corte) ---
+    out = out[out["MEDIA_RECORRENCIA"] >= corte]
+
+    # --- Organiza ---
+    out = out.sort_values(["EMPRD", "MEDIA_RECORRENCIA"], ascending=[True, False]).reset_index(drop=True)
+    out["QTD_REQS_INSUMO"] = out["QTD_REQS_INSUMO"].astype(int)
+    out["TOTAL_REQS_OBRA"] = out["TOTAL_REQS_OBRA"].astype(int)
 
     return out[[
-        "EMPRD","EMPRD_DESC","INSUMO_BASICO",
-        "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
+        "EMPRD", "EMPRD_DESC", "INSUMO_BASICO",
+        "QTD_REQS_INSUMO", "TOTAL_REQS_OBRA", "MEDIA_RECORRENCIA"
     ]]
