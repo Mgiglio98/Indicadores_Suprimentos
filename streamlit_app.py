@@ -41,7 +41,7 @@ from Tratamento_Indicadores import (
     ofs_basico_vs_nao_por_mes,
     fornecedor_top_por_uf_emp,
     tabela_ofs_atrasadas,
-    recorrencia_basicos_ano_corrente
+    recorrencia_materiais_basicos
 )
 
 from fornecedores_core import (
@@ -444,58 +444,45 @@ with st.container(border=True):
         st.altair_chart(bars + labels, use_container_width=True)
 
 with st.container(border=True):
-    st.subheader("Recorrência de Materiais Básicos — Requisições 2025 (intervalo ≤ 2)")
+    st.subheader("Recorrência de Materiais Básicos — Requisições 2025")
 
     try:
-        df_recorrencia = recorrencia_basicos_ano_corrente(df_erp)
+        df_recorr = _safe(recorrencia_materiais_basicos, df_erp, ano=2025)
+        if isinstance(df_recorr, pd.DataFrame) and not df_recorr.empty:
+            # Mostra apenas os com alta recorrência (ex: >= 0.5)
+            df_top = df_recorr[df_recorr["RECORRÊNCIA_RELATIVA"] >= 0.5]
 
-        if df_recorrencia.empty:
-            st.info("Nenhum insumo básico com alta recorrência (intervalo ≤ 2) encontrado em 2025.")
-        else:
-            st.caption("Itens básicos que se repetem com alta frequência em requisições do ano corrente.")
-            
-            # Mostra a tabela resumida
             st.dataframe(
-                df_recorrencia,
+                df_top,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
-                    "EMPRD": st.column_config.TextColumn("OBRA"),
-                    "EMPRD_DESC": st.column_config.TextColumn("EMPREENDIMENTO"),
-                    "INSUMO_DESC": st.column_config.TextColumn("INSUMO BÁSICO"),
-                    "MEDIA_INTERVALO_REQ": st.column_config.NumberColumn("MÉDIA INTERVALO (REQs)", format="%.2f"),
-                    "QTD_REQUISICOES": st.column_config.NumberColumn("QTD REQs", format="%.0f"),
+                    "OBRA": "Obra",
+                    "INSUMO_BÁSICO": "Insumo Básico",
+                    "QTD_REQS_INSUMO": "Qtd. Requisições com Insumo",
+                    "TOTAL_REQS_OBRA": "Total de Requisições da Obra",
+                    "RECORRÊNCIA_RELATIVA": st.column_config.NumberColumn(
+                        "Recorrência (%)", format="%.0f%%", help="Proporção de requisições em que o insumo aparece"
+                    )
                 },
             )
 
-            # Visualização simples — top 15 insumos mais recorrentes
-            top15 = (
-                df_recorrencia
-                .sort_values(["MEDIA_INTERVALO_REQ", "QTD_REQUISICOES"], ascending=[True, False])
-                .head(15)
-                .copy()
+            chart = (
+                alt.Chart(df_top)
+                .mark_bar()
+                .encode(
+                    x=alt.X("RECORRÊNCIA_RELATIVA:Q", title="Recorrência (%)"),
+                    y=alt.Y("INSUMO_BÁSICO:N", sort="-x", title="Insumo Básico"),
+                    color="OBRA:N",
+                    tooltip=["OBRA", "INSUMO_BÁSICO", "RECORRÊNCIA_RELATIVA", "QTD_REQS_INSUMO"]
+                )
+                .properties(height=400)
             )
-            top15["OBRA_ITEM"] = top15["EMPRD_DESC"].astype(str) + " — " + top15["INSUMO_DESC"].astype(str)
-
-            base = alt.Chart(top15).encode(
-                y=alt.Y("OBRA_ITEM:N", sort=top15["OBRA_ITEM"].tolist(), title=None),
-                x=alt.X("MEDIA_INTERVALO_REQ:Q", title="Média de intervalo (nº de REQs)"),
-                color=alt.Color("EMPRD_DESC:N", title="Obra"),
-                tooltip=[
-                    alt.Tooltip("EMPRD_DESC:N", title="Obra"),
-                    alt.Tooltip("INSUMO_DESC:N", title="Insumo"),
-                    alt.Tooltip("MEDIA_INTERVALO_REQ:Q", title="Média", format=".2f"),
-                    alt.Tooltip("QTD_REQUISICOES:Q", title="Requisições", format=".0f"),
-                ],
-            )
-
-            bars = base.mark_bar()
-            labels = base.mark_text(align="left", dx=5).encode(text=alt.Text("MEDIA_INTERVALO_REQ:Q", format=".2f"))
-
-            st.altair_chart(bars + labels, use_container_width=True)
-
+            st.altair_chart(chart, use_container_width=True)
+        else:
+            st.info("Nenhum dado de recorrência encontrado para 2025.")
     except Exception as e:
-        st.warning(f"Erro ao gerar recorrência de básicos: {e}")
+        st.warning(f"Erro ao gerar recorrência: {e}")
 
 with st.container(border=True):
     st.subheader("Materiais Básicos — Fornecimento por local")
@@ -1064,5 +1051,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
