@@ -1425,7 +1425,7 @@ def recorrencia_materiais_basicos(df, ano=2025):
     df = df[df["ANO"] == ano]
 
     # Mantém apenas materiais básicos
-    df = df[df["TIPO_INSUMO"].str.upper() == "BÁSICO"]
+    df = df[df["TIPO_MATERIAL"].str.upper() == "BÁSICO"]
 
     resultados = []
     for obra, grupo_obra in df.groupby("OBRA"):
