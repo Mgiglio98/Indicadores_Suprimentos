@@ -1414,64 +1414,66 @@ def tabela_ofs_atrasadas(
         ]
     ]
 
-def recorrencia_materiais_basicos(df: pd.DataFrame, ano: int = 2025, min_ratio: float | None = None) -> pd.DataFrame:
+def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) -> pd.DataFrame:
     """
-    Calcula a recorrência de insumos básicos por obra no ano especificado.
-    Exemplo: se a obra 2508 teve 12 REQs e o cimento aparece em 4 → 33,33%.
+    Passos:
+      1) Filtra REQ_DATA para 2025
+      2) Conta REQ_CDG por obra (TOTAL_REQS_OBRA)
+      3) Filtra só BÁSICOS e conta linhas por (obra, insumo)
+      4) Calcula média = QTD_REQS_INSUMO / TOTAL_REQS_OBRA e filtra >= corte
+    Retorna colunas: EMPRD | EMPRD_DESC | INSUMO_BASICO | QTD_REQS_INSUMO | TOTAL_REQS_OBRA | MEDIA_RECORRENCIA
     """
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
-    base = base[base["REQ_DATA_DT"].dt.year == int(ano)]
-    base = base[base.get("TIPO_MATERIAL", "").astype(str).str.upper() == "BÁSICO"]
+    base = base[base["REQ_DATA_DT"].dt.year == 2025]
 
-    if base.empty:
-        return pd.DataFrame(columns=[
-            "EMPRD","EMPRD_DESC","INSUMO_BASICO",
-            "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA","RECORRENTE"
-        ])
-
-    # Total de requisições distintas por obra (base total do denominador)
-    total_por_obra = (
+    # 2) total de REQs distintas por obra
+    tot_por_obra = (
         base.dropna(subset=["EMPRD","REQ_CDG"])
             .drop_duplicates(subset=["EMPRD","REQ_CDG"])
-            .groupby("EMPRD")["REQ_CDG"].nunique()
+            .groupby("EMPRD")["REQ_CDG"].count()
             .rename("TOTAL_REQS_OBRA")
-    )
-
-    # Total de requisições em que o insumo aparece (numerador)
-    reqs_por_insumo_obra = (
-        base.dropna(subset=["EMPRD","INSUMO_DESC","REQ_CDG"])
-            .drop_duplicates(subset=["EMPRD","INSUMO_DESC","REQ_CDG"])
-            .groupby(["EMPRD","INSUMO_DESC"])["REQ_CDG"].nunique()
-            .rename("QTD_REQS_INSUMO")
             .reset_index()
     )
 
-    # Junta com totais da obra
-    out = reqs_por_insumo_obra.merge(total_por_obra.reset_index(), on="EMPRD", how="left")
+    # 3) básicos: conta LINHAS por (obra, insumo)
+    bas = base[base.get("TIPO_MATERIAL","").astype(str).str.upper() == "BÁSICO"].copy()
+    if bas.empty:
+        return pd.DataFrame(columns=[
+            "EMPRD","EMPRD_DESC","INSUMO_BASICO","QTD_REQS_INSUMO",
+            "TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
+        ])
 
-    # Puxa o nome da obra (EMPRD_DESC)
+    qtd_insumo = (
+        bas.groupby(["EMPRD","INSUMO_DESC"])
+           .size()
+           .reset_index(name="QTD_REQS_INSUMO")
+    )
+
+    # nome da obra
     nomes = (
         base.groupby("EMPRD")["EMPRD_DESC"]
             .agg(lambda s: s.dropna().astype(str).iloc[0] if len(s.dropna()) else None)
             .reset_index()
     )
-    out = out.merge(nomes, on="EMPRD", how="left")
 
-    # Calcula média de recorrência
-    out["MEDIA_RECORRENCIA"] = (out["QTD_REQS_INSUMO"] / out["TOTAL_REQS_OBRA"]).fillna(0.0)
+    # 4) junta e calcula média
+    out = (
+        qtd_insumo.merge(tot_por_obra, on="EMPRD", how="left")
+                  .merge(nomes,       on="EMPRD", how="left")
+                  .rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
+    )
+    out["MEDIA_RECORRENCIA"] = (out["QTD_REQS_INSUMO"] / out["TOTAL_REQS_OBRA"]).astype(float)
 
-    # Formata
-    out = out.rename(columns={"INSUMO_DESC": "INSUMO_BASICO"})
-    out = out[[
+    # aplica corte (padrão 50%)
+    out = out[out["MEDIA_RECORRENCIA"] >= float(corte)].copy()
+
+    # ordenação e tipos
+    out = out.sort_values(["EMPRD","MEDIA_RECORRENCIA"], ascending=[True, False]).reset_index(drop=True)
+    out["QTD_REQS_INSUMO"]  = out["QTD_REQS_INSUMO"].astype(int)
+    out["TOTAL_REQS_OBRA"]  = out["TOTAL_REQS_OBRA"].astype(int)
+
+    return out[[
         "EMPRD","EMPRD_DESC","INSUMO_BASICO",
         "QTD_REQS_INSUMO","TOTAL_REQS_OBRA","MEDIA_RECORRENCIA"
-    ]].sort_values(["EMPRD","MEDIA_RECORRENCIA"], ascending=[True,False]).reset_index(drop=True)
-
-    # Marca recorrentes (ex: ≥ 25%)
-    if min_ratio is not None:
-        out["RECORRENTE"] = out["MEDIA_RECORRENCIA"] >= float(min_ratio)
-    else:
-        out["RECORRENTE"] = pd.NA
-
-    return out
+    ]]
