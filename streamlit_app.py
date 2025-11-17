@@ -41,7 +41,8 @@ from Tratamento_Indicadores import (
     ofs_basico_vs_nao_por_mes,
     fornecedor_top_por_uf_emp,
     tabela_ofs_atrasadas,
-    recorrencia_materiais_basicos_2025
+    recorrencia_materiais_basicos_2025,
+    itens_basicos_pequenas_qtds_alta_frequencia_2025
 )
 
 from fornecedores_core import (
@@ -481,7 +482,6 @@ with st.container(border=True):
     st.subheader("Itens Básicos com Pequena Quantidade e Alta Frequência — 2025")
 
     try:
-        df_itens_peq = recorrencia_materiais_basicos_2025(df_erp)  # Substitua aqui pelo nome correto
         df_itens_peq = itens_basicos_pequenas_qtds_alta_frequencia_2025(df_erp)
     except Exception as e:
         df_itens_peq = pd.DataFrame()
@@ -513,19 +513,6 @@ with st.container(border=True):
                 "Total Comprado": st.column_config.NumberColumn("Total Comprado", format="%.0f"),
                 "Qtd. OFs distintas": st.column_config.NumberColumn("OFs distintas", format="%d"),
             },
-        )
-
-        # Exportar para Excel
-        buffer_itens = io.BytesIO()
-        with pd.ExcelWriter(buffer_itens, engine="openpyxl") as writer:
-            df_vis.to_excel(writer, index=False, sheet_name="Itens_Frequentes_2025")
-        buffer_itens.seek(0)
-
-        st.download_button(
-            label="📥 Baixar tabela de itens em Excel",
-            data=buffer_itens,
-            file_name="Itens_Frequentes_Baixa_Qtd_2025.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
 with st.container(border=True):
@@ -1095,6 +1082,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
