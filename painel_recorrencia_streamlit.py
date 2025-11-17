@@ -3,8 +3,10 @@
 import streamlit as st
 import pandas as pd
 
-from recorrencia_basicos import (
+from Tratamento_Indicadores import (
     carregar_bases,
+)
+from recorrencia_basicos import (
     painel_recorrencia_basicos,
 )
 from visualizacoes_recorrencia import (
@@ -16,7 +18,6 @@ from visualizacoes_recorrencia import (
     plot_itens_pingados,
 )
 
-
 st.set_page_config(
     page_title="Painel de Recorrência - Materiais Básicos",
     page_icon="📦",
@@ -26,13 +27,11 @@ st.set_page_config(
 st.title("📦 Recorrência de Materiais Básicos")
 st.caption("Análise de padrões de consumo por obra, item e tempo.")
 
-
 @st.cache_data
 def carregar_painel(ano: int):
     df = carregar_bases()
     painel = painel_recorrencia_basicos(df, ano=ano)
     return df, painel
-
 
 # ---------------- Barra lateral ----------------
 st.sidebar.header("Filtros")
@@ -55,7 +54,6 @@ obra_sel = st.sidebar.selectbox("Obra para detalhamento de recorrência mensal",
 st.sidebar.markdown("---")
 st.sidebar.write("**Indicadores brutos**")
 st.sidebar.json(resumo)
-
 
 # ---------------- Resumo no topo ----------------
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -166,4 +164,5 @@ with tab_pingados:
 
     if not df_pingados.empty:
         st.subheader("Tabela detalhada - Itens pingados")
+
         st.dataframe(df_pingados)
