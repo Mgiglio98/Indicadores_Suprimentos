@@ -4,3 +4,5 @@ openpyxl
 plotly
 xlsxwriter
 numpy
+matplotlib==3.7.5
+seaborn==0.13.2
