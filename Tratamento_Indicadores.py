@@ -1486,3 +1486,80 @@ def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) ->
         "EMPRD", "EMPRD_DESC", "INSUMO_BASICO",
         "QTD_REQS_INSUMO", "TOTAL_REQS_OBRA", "MEDIA_RECORRENCIA"
     ]]
+
+def itens_basicos_pequenas_qtds_alta_frequencia_2025(
+    df: pd.DataFrame,
+    min_pedidos: int = 5,
+    max_media_qtd: float = 10.0
+) -> pd.DataFrame:
+    """
+    Retorna itens BÁSICOS comprados com pequena quantidade média por pedido
+    e alta frequência de requisições no ano de 2025.
+
+    Parâmetros:
+        df            : DataFrame carregado via carregar_bases()
+        min_pedidos   : mínimo de requisições (default=5)
+        max_media_qtd : máximo da média de quantidade por pedido (default=10)
+
+    Saída:
+        DataFrame com:
+        INSUMO_CDG | INSUMO_DESC | pedidos | media_qtd | qtd_total | vezes_distintas
+    """
+
+    base = df.copy()
+
+    # --- Garantir datas ---
+    base["REQ_DATA"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
+
+    # --- Filtrar apenas 2025 ---
+    base = base[base["REQ_DATA"].dt.year == 2025]
+
+    if base.empty:
+        return pd.DataFrame(columns=[
+            "INSUMO_CDG","INSUMO_DESC","pedidos",
+            "media_qtd","qtd_total","vezes_distintas"
+        ])
+
+    # --- Filtrar apenas materiais básicos ---
+    if "TIPO_MATERIAL" not in base.columns:
+        return pd.DataFrame(columns=[
+            "INSUMO_CDG","INSUMO_DESC","pedidos",
+            "media_qtd","qtd_total","vezes_distintas"
+        ])
+
+    base = base[base["TIPO_MATERIAL"].astype(str).str.upper() == "BÁSICO"]
+    if base.empty:
+        return pd.DataFrame(columns=[
+            "INSUMO_CDG","INSUMO_DESC","pedidos",
+            "media_qtd","qtd_total","vezes_distintas"
+        ])
+
+    # --- Garantir numéricos adequados ---
+    base["QTD_PED"] = pd.to_numeric(base.get("QTD_PED"), errors="coerce")
+    base = base.dropna(subset=["QTD_PED", "INSUMO_CDG", "INSUMO_DESC"])
+
+    # --- Agrupar ---
+    g = (
+        base.groupby(["INSUMO_CDG", "INSUMO_DESC"])
+        .agg(
+            pedidos=("REQ_CDG", "count"),
+            media_qtd=("QTD_PED", "mean"),
+            qtd_total=("QTD_PED", "sum"),
+            vezes_distintas=("OF_CDG", pd.Series.nunique),
+        )
+        .reset_index()
+    )
+
+    # --- Filtrar critérios ---
+    out = g[
+        (g["pedidos"] >= int(min_pedidos)) &
+        (g["media_qtd"] <= float(max_media_qtd))
+    ].copy()
+
+    # --- Ordenação sugerida ---
+    out = out.sort_values(["pedidos", "media_qtd"], ascending=[False, True])
+
+    # Arredonda médias
+    out["media_qtd"] = out["media_qtd"].round(3)
+
+    return out.reset_index(drop=True)
