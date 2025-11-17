@@ -478,6 +478,56 @@ with st.container(border=True):
             }
         )
 
+    st.subheader("Itens Básicos com Pequena Quantidade e Alta Frequência — 2025")
+
+    try:
+        df_itens_peq = recorrencia_materiais_basicos_2025(df_erp)  # Substitua aqui pelo nome correto
+        df_itens_peq = itens_basicos_pequenas_qtds_alta_frequencia_2025(df_erp)
+    except Exception as e:
+        df_itens_peq = pd.DataFrame()
+        st.warning(f"Erro ao calcular itens recorrentes com baixa quantidade: {e}")
+
+    if df_itens_peq.empty:
+        st.info("Nenhum item básico com alta frequência e baixa quantidade média encontrado para 2025.")
+    else:
+        # Exibe a tabela formatada
+        df_vis = df_itens_peq.copy()
+        df_vis = df_vis.rename(columns={
+            "INSUMO_CDG": "Código",
+            "INSUMO_DESC": "Descrição do Insumo",
+            "pedidos": "Qtd. Requisições",
+            "media_qtd": "Média por Pedido",
+            "qtd_total": "Total Comprado",
+            "vezes_distintas": "Qtd. OFs distintas"
+        })
+
+        st.dataframe(
+            df_vis,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Código": st.column_config.TextColumn("Código"),
+                "Descrição do Insumo": st.column_config.TextColumn("Descrição"),
+                "Qtd. Requisições": st.column_config.NumberColumn("Requisições", format="%d"),
+                "Média por Pedido": st.column_config.NumberColumn("Média por Pedido", format="%.2f"),
+                "Total Comprado": st.column_config.NumberColumn("Total Comprado", format="%.0f"),
+                "Qtd. OFs distintas": st.column_config.NumberColumn("OFs distintas", format="%d"),
+            },
+        )
+
+        # Exportar para Excel
+        buffer_itens = io.BytesIO()
+        with pd.ExcelWriter(buffer_itens, engine="openpyxl") as writer:
+            df_vis.to_excel(writer, index=False, sheet_name="Itens_Frequentes_2025")
+        buffer_itens.seek(0)
+
+        st.download_button(
+            label="📥 Baixar tabela de itens em Excel",
+            data=buffer_itens,
+            file_name="Itens_Frequentes_Baixa_Qtd_2025.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
 with st.container(border=True):
     st.subheader("Materiais Básicos — Fornecimento por local")
 
@@ -1045,6 +1095,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
