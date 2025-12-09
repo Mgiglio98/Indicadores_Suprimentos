@@ -445,41 +445,6 @@ with st.container(border=True):
         st.altair_chart(bars + labels, use_container_width=True)
 
 with st.container(border=True):
-    st.subheader("Recorrência de Materiais Básicos — Requisições 2025 (≥ 50%)")
-
-    try:
-        df_rec = recorrencia_materiais_basicos_2025(df_erp, corte=0.50)
-    except Exception as e:
-        df_rec = pd.DataFrame()
-        st.warning(f"Não consegui calcular recorrência_materiais_basicos_2025: {e}")
-
-    if df_rec.empty:
-        st.info("Nenhum dado de recorrência encontrado para 2025.")
-    else:
-        # exibição formatada
-        df_vis = df_rec.copy()
-        df_vis["RECORRÊNCIA (%)"] = (df_vis["MEDIA_RECORRENCIA"] * 100).round(2)
-        df_vis = df_vis.rename(columns={
-            "EMPRD": "EMPRD",
-            "EMPRD_DESC": "EMPREENDIMENTO",
-            "INSUMO_BASICO": "Insumo Básico",
-            "QTD_REQS_INSUMO": "Qtd. Requisições com Insumo",
-            "TOTAL_REQS_OBRA": "Total de Requisições da Obra"
-        })[[
-            "EMPRD","EMPREENDIMENTO","Insumo Básico",
-            "Qtd. Requisições com Insumo","Total de Requisições da Obra","RECORRÊNCIA (%)"
-        ]]
-
-        st.dataframe(
-            df_vis,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "RECORRÊNCIA (%)": st.column_config.NumberColumn("Recorrência (%)", format="%.2f")
-            }
-        )
-
-with st.container(border=True):
     st.subheader("Materiais Básicos — Fornecimento por local")
 
     st.markdown("**Fornecedores aptos por UF**")
@@ -1046,6 +1011,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
