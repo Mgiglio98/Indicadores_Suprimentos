@@ -67,6 +67,9 @@ col1, col2 = st.columns([6,1], vertical_alignment="center")
 
 with col1:
     st.title("Suprimentos • Indicadores e Fornecedores")
+    st.caption(
+        "Painel consolidado para análise de indicadores, considerando apenas Requisições e OFs Aprovadas"
+    )
 
 with col2:
     logo_path = Path(__file__).parent / "logo.png"
@@ -1011,6 +1014,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
