@@ -901,7 +901,7 @@ def tempo_medio_geracao_of(
       - considerar_dias_uteis: se True, usa dias úteis (seg-sex, com feriados).
                                se False, usa dias corridos.
       - meses_lookback: janela de análise (filtra por OF_DATA).
-      - feriados: lista opcional de strings de datas (ex.: '2025-09-07') a excluir como dias úteis.
+      - feriados: lista opcional de strings de datas (ex.: '2026-09-07') a excluir como dias úteis.
 
     Retorna:
       (media, mediana, p90, df_duracoes)
@@ -1026,17 +1026,17 @@ def tempos_medios_12m_5a(
     )
     return round(float(media_12m), 2), round(float(media_5a), 2)
 
-def quantidade_ofs_ate_300_2024_2025(
+def quantidade_ofs_ate_300_2025_2026(
     df: pd.DataFrame,
     limite: float = 300.0,
-    anos: tuple[int, ...] = (2024, 2025),
+    anos: tuple[int, ...] = (2025, 2026),
     excluir_itens_nao_positivos: bool = True,  # True = ignora linhas com total <= 0
 ) -> tuple[dict, pd.DataFrame]:
     """
-    Conta OFs distintas com valor total < limite nos anos especificados (padrão: 2024 e 2025).
+    Conta OFs distintas com valor total < limite nos anos especificados (padrão: 2025 e 2026).
 
     Retorna:
-      - resumo (dict): {"2024": X, "2025": Y, "TOTAL_2024_2025": Z}
+      - resumo (dict): {"2025": X, "2026": Y, "TOTAL_2025_2026": Z}
       - df_ofs (DataFrame): detalhes por OF (OF_CDG, ANO, VALOR_TOTAL_OF, OF_DATA, EMPRD_DESC, FORNECEDOR_DESC)
     """
     base = df.copy()
@@ -1092,7 +1092,7 @@ def quantidade_ofs_ate_300_2024_2025(
 
 def requisicoes_ofs_por_mes(
     df: pd.DataFrame,
-    ano: int = 2025,
+    ano: int = 2026,
     col_req: str = "REQ_CDG",
     col_of: str = "OF_CDG",
     col_empr: str = "EMPRD",
@@ -1144,7 +1144,7 @@ def requisicoes_ofs_por_mes(
 
 def media_requisicoes_por_empreendimento_mes(
     df: pd.DataFrame,
-    ano: int = 2025,
+    ano: int = 2026,
     col_req: str = "REQ_CDG",
     col_empr: str = "EMPRD",
     col_empr_desc: str = "EMPRD_DESC",
@@ -1201,14 +1201,14 @@ def media_requisicoes_por_empreendimento_mes(
 
 def tempo_medio_req_para_of_por_mes(
     df: pd.DataFrame,
-    ano: int = 2025,
+    ano: int = 2026,
     dias_uteis_sla: int = 3,
     col_req: str = "REQ_CDG",
     col_req_data: str = "REQ_DATA",
     col_of_data: str = "OF_DATA"
 ) -> pd.DataFrame:
     """
-    Calcula o tempo médio (em dias úteis) entre REQ_DATA e OF_DATA, por mês de 2025.
+    Calcula o tempo médio (em dias úteis) entre REQ_DATA e OF_DATA, por mês de 2026.
     Também conta quantas ultrapassaram o SLA (dias_uteis_sla).
 
     Retorna DataFrame com:
@@ -1264,13 +1264,13 @@ def tempo_medio_req_para_of_por_mes(
 
 def total_ofs_por_ano(
     df: pd.DataFrame,
-    anos: tuple[int, ...] = (2024, 2025),
+    anos: tuple[int, ...] = (2025, 2026),
     col_of: str = "OF_CDG",
     col_of_data: str = "OF_DATA"
 ) -> dict:
     """
     Conta OFs distintas para os anos informados.
-    Retorna dict com {"2024": X, "2025": Y}
+    Retorna dict com {"2025": X, "2026": Y}
     """
     base = df.copy()
     base["OF_DATA_DT"] = pd.to_datetime(base.get(col_of_data), errors="coerce")
@@ -1287,7 +1287,7 @@ def total_ofs_por_ano(
 
 def ofs_basico_vs_nao_por_mes(
     df: pd.DataFrame,
-    ano: int = 2025,
+    ano: int = 2026,
     col_tipo: str = "TIPO_MATERIAL",
     col_of: str = "OF_CDG",
     col_data: str = "OF_DATA"
@@ -1414,9 +1414,9 @@ def tabela_ofs_atrasadas(
         ]
     ]
 
-def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) -> pd.DataFrame:
+def recorrencia_materiais_basicos_2026(df: pd.DataFrame, corte: float = 0.50) -> pd.DataFrame:
     """
-    Calcula a recorrência de materiais básicos por obra no ano de 2025.
+    Calcula a recorrência de materiais básicos por obra no ano de 2026.
     - Considera apenas obras com >= 3 requisições no ano
     - Conta quantas requisições distintas possuem cada insumo básico
     - Calcula a proporção e filtra recorrência >= corte (ex.: 50%)
@@ -1424,7 +1424,7 @@ def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) ->
 
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
-    base = base[base["REQ_DATA_DT"].dt.year == 2025]
+    base = base[base["REQ_DATA_DT"].dt.year == 2026]
 
     # --- Conta total de requisições por obra ---
     total_reqs = (
@@ -1487,14 +1487,14 @@ def recorrencia_materiais_basicos_2025(df: pd.DataFrame, corte: float = 0.50) ->
         "QTD_REQS_INSUMO", "TOTAL_REQS_OBRA", "MEDIA_RECORRENCIA"
     ]]
 
-def itens_basicos_pequenas_qtds_alta_frequencia_2025(
+def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     df: pd.DataFrame,
     min_pedidos: int = 5,
     max_media_qtd: float = 10.0
 ) -> pd.DataFrame:
     """
     Retorna itens BÁSICOS comprados com pequena quantidade média por pedido
-    e alta frequência de requisições no ano de 2025.
+    e alta frequência de requisições no ano de 2026.
 
     Parâmetros:
         df            : DataFrame carregado via carregar_bases()
@@ -1511,8 +1511,8 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2025(
     # --- Garantir datas ---
     base["REQ_DATA"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
 
-    # --- Filtrar apenas 2025 ---
-    base = base[base["REQ_DATA"].dt.year == 2025]
+    # --- Filtrar apenas 2026 ---
+    base = base[base["REQ_DATA"].dt.year == 2026]
 
     if base.empty:
         return pd.DataFrame(columns=[
@@ -1563,3 +1563,4 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2025(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
