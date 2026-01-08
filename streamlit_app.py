@@ -1081,7 +1081,7 @@ with st.container(border=True):
 
 with st.container(border=True):
     df_ofs_atrasadas = tabela_ofs_atrasadas(df)
-    st.subheader("OFs que ultrapassaram o SLA — Requisições 2026")
+    st.subheader("OFs que ultrapassaram o SLA — Requisições 2025")
     st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
 
     # --- Download da tabela de OFs atrasadas ---
