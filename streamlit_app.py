@@ -416,6 +416,38 @@ with st.container(border=True):
         st.warning(f"Não foi possível gerar a visão de fornecedores: {e}")
 
 with st.container(border=True):
+    st.subheader("OFs Básicas vs Específicas — 2025")
+    df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2025)
+
+    if df_basicos.empty:
+        st.info("Nenhuma OF registrada em 2025.")
+    else:
+        # --- melt para formato longo ---
+        df_long = df_basicos.melt(
+            id_vars="ANO_MES",
+            value_vars=["BASICO", "ESPECIFICO"],
+            var_name="TIPO",
+            value_name="QTD"
+        )
+
+        base = alt.Chart(df_long).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("QTD:Q", stack="normalize", title="Proporção"),
+            color=alt.Color("TIPO:N", title="Tipo"),
+            tooltip=["ANO_MES","TIPO","QTD"]
+        )
+        # Barras empilhadas
+        bars = base.mark_bar()
+
+        # Labels com valores absolutos
+        labels = base.mark_text(
+            dy=-10,  # um pouco acima do topo
+        ).encode(
+            text=alt.Text("QTD:Q", format=".0f")
+        )
+        st.altair_chart(bars + labels, use_container_width=True)
+
+with st.container(border=True):
     st.subheader("OFs Básicas vs Específicas — 2026")
     df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2026)
 
@@ -1014,6 +1046,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
