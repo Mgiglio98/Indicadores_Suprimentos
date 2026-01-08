@@ -1347,7 +1347,7 @@ def tabela_ofs_atrasadas(
     # Filtra ano (padrão = ano atual)
     if ano is None:
         ano = pd.Timestamp.today().year
-    base = base[base["REQ_DATA"].dt.year == ano]
+    base = base[base["REQ_DATA"].dt.year == ano - 1]
 
     # Mantém apenas linhas válidas
     base = base.dropna(subset=["REQ_DATA", "OF_DATA", "OF_CDG"])
@@ -1563,4 +1563,5 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
