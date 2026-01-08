@@ -822,6 +822,55 @@ with st.container(border=True):
 
 # ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
+    st.subheader("Requisições e OFs — 2025")
+
+    df_mes = _safe(requisicoes_ofs_por_mes, df, ano=2025)
+    if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
+        df_long = df_mes.melt(
+            id_vars="ANO_MES",
+            value_vars=["REQUISICOES", "OFS"],
+            var_name="TIPO",
+            value_name="QTD"
+        )
+        df_long["QTD"] = pd.to_numeric(df_long["QTD"], errors="coerce").fillna(0).astype(int)
+
+        # Barras agrupadas (duas por mês)
+        bars = (
+            alt.Chart(df_long)
+            .mark_bar()
+            .encode(
+                x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+                xOffset=alt.XOffset("TIPO:N", sort=["REQUISICOES", "OFS"]),
+                y=alt.Y("QTD:Q", title="Quantidade"),
+                color=alt.Color("TIPO:N", title="Tipo", scale=alt.Scale(scheme="category10")),
+                tooltip=[
+                    alt.Tooltip("ANO_MES:N", title="Mês"),
+                    alt.Tooltip("TIPO:N", title="Tipo"),
+                    alt.Tooltip("QTD:Q", title="Qtd", format=".0f"),
+                ],
+            )
+            .properties(height=300)
+        )
+
+        # Rótulos nas barras
+        labels = (
+            alt.Chart(df_long)
+            .mark_text(align="center", baseline="bottom", dy=-2)
+            .encode(
+                x=alt.X("ANO_MES:N"),
+                xOffset=alt.XOffset("TIPO:N", sort=["REQUISICOES", "OFS"]),
+                y=alt.Y("QTD:Q"),
+                text=alt.Text("QTD:Q", format=".0f"),
+                detail="TIPO:N",
+            )
+        )
+
+        chart = alt.layer(bars, labels).resolve_scale(y="shared")
+        st.altair_chart(chart, use_container_width=True)
+    else:
+        st.info("Sem dados de REQ ou OF para 2025.")
+
+with st.container(border=True):
     st.subheader("Requisições e OFs — 2026")
 
     df_mes = _safe(requisicoes_ofs_por_mes, df, ano=2026)
@@ -872,6 +921,49 @@ with st.container(border=True):
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
+    st.subheader("Média de Requisições por Empreendimento — 2025")
+
+    df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025)
+    if isinstance(df_media, pd.DataFrame) and not df_media.empty:
+        # Mantém 1 casa decimal
+        df_media["MEDIA_REQ_POR_EMPR"] = df_media["MEDIA_REQ_POR_EMPR"].round(1)
+
+        base = alt.Chart(df_media).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title="Média de requisições"),
+            tooltip=[
+                alt.Tooltip("ANO_MES:N", title="Mês"),
+                alt.Tooltip("MEDIA_REQ_POR_EMPR:Q", title="Média", format=".1f"),
+                alt.Tooltip("MEDIA_REQ_POR_EMPR:Q", title="Total de REQs")
+            ]
+        )
+
+        # Linha principal
+        line = base.mark_line(point=True)
+
+        # Labels com 1 casa decimal
+        labels = base.mark_text(dy=-8).encode(
+            text=alt.Text("MEDIA_REQ_POR_EMPR:Q", format=".1f")
+        )
+
+        # Linha horizontal representando o limite/meta (4 requisições)
+        meta_line = alt.Chart(pd.DataFrame({"y": [4]})).mark_rule(
+            color="red", strokeDash=[4, 4]
+        ).encode(y="y:Q")
+
+        st.altair_chart(line + labels + meta_line, use_container_width=True)
+
+        # Lista de obras com mais de 4 requisições (dentro de expander)
+        with st.expander("🔎 Ver obras com mais de 4 requisições por mês"):
+            for _, row in df_media.iterrows():
+                if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
+                    st.markdown(
+                        f"**{row['ANO_MES']}** — {row['TOP_EMPREENDIMENTOS']}"
+                    )
+    else:
+        st.info("Sem dados de requisições para 2025.")
+
+with st.container(border=True):
     st.subheader("Média de Requisições por Empreendimento — 2026")
 
     df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2026)
@@ -916,6 +1008,41 @@ with st.container(border=True):
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
+    st.subheader("Tempo médio em dias: REQ → OF — 2025")
+
+    df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
+    if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
+        # 🔢 Arredonda os valores para inteiro
+        df_tempo["MEDIA_DIAS_UTEIS"] = df_tempo["MEDIA_DIAS_UTEIS"].round(0).astype(int)
+
+        base = alt.Chart(df_tempo).encode(
+            x=alt.X("ANO_MES:N", title="Mês", axis=alt.Axis(labelAngle=0)),
+            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title="Dias úteis", axis=alt.Axis(title="Média de dias")),
+            tooltip=[
+                alt.Tooltip("ANO_MES:N", title="Mês"),
+                alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias)", format=".0f"),
+                alt.Tooltip("TOTAL_OFS:Q", title="Total de OFs"),
+                alt.Tooltip("ULTRAPASSARAM_SLA:Q", title="Acima do SLA")
+            ]
+        )
+        # 📈 Linha principal
+        line = base.mark_line(point=True)
+
+        # 🔢 Labels com valores inteiros
+        labels = base.mark_text(dy=-8).encode(
+            text=alt.Text("MEDIA_DIAS_UTEIS:Q", format=".0f")
+        )
+        # ➖ Linha horizontal representando o SLA (3 dias)
+        sla_line = alt.Chart(pd.DataFrame({"y": [3]})).mark_rule(
+            color="red", strokeDash=[4, 4]
+        ).encode(y="y:Q")
+
+        # 🖼️ Renderiza gráfico
+        st.altair_chart(line + labels + sla_line, use_container_width=True)
+    else:
+        st.info("Sem dados de REQ → OF para 2025.")
+
+with st.container(border=True):
     st.subheader("Tempo médio em dias: REQ → OF — 2026")
 
     df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2026, dias_uteis_sla=3)
@@ -947,18 +1074,6 @@ with st.container(border=True):
 
         # 🖼️ Renderiza gráfico
         st.altair_chart(line + labels + sla_line, use_container_width=True)
-
-        # Comentário: meses com OFs acima do SLA
-        # with st.expander("🔎 Ver meses que ultrapassaram o SLA (3 dias)"):
-        #     for _, row in df_tempo.iterrows():
-        #         total = row["TOTAL_OFS"]
-        #         acima = row["ULTRAPASSARAM_SLA"]
-        #         if acima > 0:
-        #             perc = (acima / total * 100) if total else 0
-        #             st.markdown(
-        #                 f"**{row['ANO_MES']}** — {acima} de {total} OFs acima do SLA "
-        #                 f"(`{perc:.1f}%`)"
-        #             )
     else:
         st.info("Sem dados de REQ → OF para 2026.")
 
@@ -1046,15 +1161,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
