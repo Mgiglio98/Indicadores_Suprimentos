@@ -33,7 +33,7 @@ from Tratamento_Indicadores import (
     compras_atrasadas,
     tempo_medio_geracao_of,
     tempos_medios_12m_5a,
-    quantidade_ofs_ate_300_2024_2025,
+    quantidade_ofs_ate_300_2025_2026,
     requisicoes_ofs_por_mes,
     media_requisicoes_por_empreendimento_mes,
     tempo_medio_req_para_of_por_mes,
@@ -41,8 +41,8 @@ from Tratamento_Indicadores import (
     ofs_basico_vs_nao_por_mes,
     fornecedor_top_por_uf_emp,
     tabela_ofs_atrasadas,
-    recorrencia_materiais_basicos_2025,
-    itens_basicos_pequenas_qtds_alta_frequencia_2025
+    recorrencia_materiais_basicos_2026,
+    itens_basicos_pequenas_qtds_alta_frequencia_2026
 )
 
 from fornecedores_core import (
@@ -362,19 +362,19 @@ with st.container(border=True):
         m12, m5a = None, None
 
     try:
-        resumo_baratas, df_ofs_baratas = quantidade_ofs_ate_300_2024_2025(df)
-        kpi_ofs_2024 = int(resumo_baratas.get("2024", 0))
+        resumo_baratas, df_ofs_baratas = quantidade_ofs_ate_300_2025_2026(df)
         kpi_ofs_2025 = int(resumo_baratas.get("2025", 0))
+        kpi_ofs_2026 = int(resumo_baratas.get("2026", 0))
     except Exception:
-        kpi_ofs_2024, kpi_ofs_2025 = None, None
+        kpi_ofs_2025, kpi_ofs_2026 = None, None
         df_ofs_baratas = pd.DataFrame()
 
     try:
-        totais_ano = total_ofs_por_ano(df, anos=(2024, 2025))
-        total_ofs_2024 = totais_ano.get("2024", 0)
+        totais_ano = total_ofs_por_ano(df, anos=(2025, 2026))
         total_ofs_2025 = totais_ano.get("2025", 0)
+        total_ofs_2026 = totais_ano.get("2026", 0)
     except Exception:
-        total_ofs_2024 = total_ofs_2025 = None
+        total_ofs_2025 = total_ofs_2026 = None
 
    # Linha 1 centralizada (5 KPIs)
     spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
@@ -389,10 +389,10 @@ with st.container(border=True):
     spacer1, r2c1, r2c2, r2c3, r2c4, r2c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
 
     r2c1.metric("Compras com atraso (12m)", _format_pct_br(taxa_atraso_pct) if taxa_atraso_pct is not None else "—")
-    r2c2.metric("OFs < R$ 300 - 2024", _format_int_br(kpi_ofs_2024) if kpi_ofs_2024 is not None else "—")
-    r2c3.metric("Total de OFs 2024", _format_int_br(total_ofs_2024) if total_ofs_2024 is not None else "—")
-    r2c4.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
-    r2c5.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
+    r2c2.metric("OFs < R$ 300 - 2025", _format_int_br(kpi_ofs_2025) if kpi_ofs_2025 is not None else "—")
+    r2c3.metric("Total de OFs 2025", _format_int_br(total_ofs_2025) if total_ofs_2025 is not None else "—")
+    r2c4.metric("OFs < R$ 300 - 2026", _format_int_br(kpi_ofs_2026) if kpi_ofs_2026 is not None else "—")
+    r2c5.metric("Total de OFs 2026", _format_int_br(total_ofs_2026) if total_ofs_2026 is not None else "—")
 
 with st.container(border=True):
     st.subheader("Visão Geral de Fornecedores — Cadastro × Utilização (Materiais + Serviços)")
@@ -416,11 +416,11 @@ with st.container(border=True):
         st.warning(f"Não foi possível gerar a visão de fornecedores: {e}")
 
 with st.container(border=True):
-    st.subheader("OFs Básicas vs Específicas — 2025")
-    df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2025)
+    st.subheader("OFs Básicas vs Específicas — 2026")
+    df_basicos = ofs_basico_vs_nao_por_mes(df_erp, ano=2026)
 
     if df_basicos.empty:
-        st.info("Nenhuma OF registrada em 2025.")
+        st.info("Nenhuma OF registrada em 2026.")
     else:
         # --- melt para formato longo ---
         df_long = df_basicos.melt(
@@ -790,9 +790,9 @@ with st.container(border=True):
 
 # ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
-    st.subheader("Requisições e OFs — 2025")
+    st.subheader("Requisições e OFs — 2026")
 
-    df_mes = _safe(requisicoes_ofs_por_mes, df, ano=2025)
+    df_mes = _safe(requisicoes_ofs_por_mes, df, ano=2026)
     if isinstance(df_mes, pd.DataFrame) and not df_mes.empty:
         df_long = df_mes.melt(
             id_vars="ANO_MES",
@@ -836,13 +836,13 @@ with st.container(border=True):
         chart = alt.layer(bars, labels).resolve_scale(y="shared")
         st.altair_chart(chart, use_container_width=True)
     else:
-        st.info("Sem dados de REQ ou OF para 2025.")
+        st.info("Sem dados de REQ ou OF para 2026.")
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
-    st.subheader("Média de Requisições por Empreendimento — 2025")
+    st.subheader("Média de Requisições por Empreendimento — 2026")
 
-    df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2025)
+    df_media = _safe(media_requisicoes_por_empreendimento_mes, df, ano=2026)
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
         # Mantém 1 casa decimal
         df_media["MEDIA_REQ_POR_EMPR"] = df_media["MEDIA_REQ_POR_EMPR"].round(1)
@@ -880,13 +880,13 @@ with st.container(border=True):
                         f"**{row['ANO_MES']}** — {row['TOP_EMPREENDIMENTOS']}"
                     )
     else:
-        st.info("Sem dados de requisições para 2025.")
+        st.info("Sem dados de requisições para 2026.")
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
-    st.subheader("Tempo médio em dias: REQ → OF — 2025")
+    st.subheader("Tempo médio em dias: REQ → OF — 2026")
 
-    df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2025, dias_uteis_sla=3)
+    df_tempo = _safe(tempo_medio_req_para_of_por_mes, df, ano=2026, dias_uteis_sla=3)
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
         # 🔢 Arredonda os valores para inteiro
         df_tempo["MEDIA_DIAS_UTEIS"] = df_tempo["MEDIA_DIAS_UTEIS"].round(0).astype(int)
@@ -928,13 +928,13 @@ with st.container(border=True):
         #                 f"(`{perc:.1f}%`)"
         #             )
     else:
-        st.info("Sem dados de REQ → OF para 2025.")
+        st.info("Sem dados de REQ → OF para 2026.")
 
 # ⬇️ NOVO bloco: tabela de OFs atrasadas (>3 dias úteis)
 
 with st.container(border=True):
     df_ofs_atrasadas = tabela_ofs_atrasadas(df)
-    st.subheader("OFs que ultrapassaram o SLA — Requisições 2025")
+    st.subheader("OFs que ultrapassaram o SLA — Requisições 2026")
     st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
 
     # --- Download da tabela de OFs atrasadas ---
@@ -971,9 +971,9 @@ with st.container(border=True):
         df_anomalias["Data Anomalia"], errors="coerce"
     )
 
-    # Excluir março/2025
+    # Excluir março/2026
     df_anomalias = df_anomalias[
-        df_anomalias["Data Anomalia"].dt.to_period("M").astype(str) != "2025-03"
+        df_anomalias["Data Anomalia"].dt.to_period("M").astype(str) != "2026-03"
     ]
 
     # Gráfico + comentários
@@ -1014,6 +1014,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
