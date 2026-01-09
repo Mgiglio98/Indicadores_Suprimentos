@@ -88,7 +88,7 @@ Empreendimento;Anomalia Pedido Nº;Anomalia Requisição Nº;Data Anomalia;Adm Respo
 2317;41;;30/10/2025;;Odair;Julia;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 2509;9;;04/11/2025;;Jorge;Rosileno;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 2212;173;;05/11/2025;;Renan Viegas;Igor Bueno;Pedido;Descrição incorreta do insumo;VERDADEIRO;
-2503;46;;06/11/2025;;Beatriz Castellato;Andre Pestana;Pedido;Descrição incorreta do insumo;VERDADEIRO;
+2503;46;;06/11/2025;;Beatriz Casellato;Andre Pestana;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 2411;50;;10/11/2025;;Daniel Kahn;Vitor Ramos;Pedido;Quantidade incorreta;VERDADEIRO;
 2411;51;;12/11/2025;;Daniel Kahn;Vitor Ramos;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 2317;44;;14/11/2025;;Odair;Julia;Pedido;Descrição incorreta do insumo;VERDADEIRO;
@@ -96,9 +96,9 @@ Empreendimento;Anomalia Pedido Nº;Anomalia Requisição Nº;Data Anomalia;Adm Respo
 2512;8;;26/11/2025;;Leonardo Devico;Leonardo Devico;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 2411;52;;25/11/2025;;Brito;Vitor Ramos;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 2317;46;;24/11/2025;;Odar;Julia Vigorito;Pedido;Descrição incorreta do insumo;VERDADEIRO;
-;;;;;;;;;FALSO;
-;;;;;;;;;FALSO;
-;;;;;;;;;FALSO;
+2512;10;;09/12/2025;;Leonardo Devico;Leonardo Devico;Pedido;Descrição incorreta do insumo;VERDADEIRO;
+2516;9;;18/12/2025;;Beatriz Casellato;Andre Pestana;Pedido;Descrição incorreta do insumo;VERDADEIRO;
+2516;8;;02/12/2025;;Beatriz Casellato;Andre Pestana;Pedido;Descrição incorreta do insumo;VERDADEIRO;
 ;;;;;;;;;FALSO;
 ;;;;;;;;;FALSO;
 ;;;;;;;;;FALSO;
