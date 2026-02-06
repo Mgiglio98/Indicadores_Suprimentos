@@ -1236,7 +1236,7 @@ def tempo_medio_req_para_of_por_mes(
     )
 
     # Remove OFs inconsistentes
-    agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
+    # agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
     if agg.empty:
         return pd.DataFrame(columns=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"])
 
@@ -1563,5 +1563,6 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
