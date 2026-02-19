@@ -453,7 +453,8 @@ with st.container(border=True):
             x=alt.X(
                 "ANO_MES_LABEL:N",
                 sort=alt.SortField("ANO_MES_PERIOD"),
-                title=None
+                title=None,
+                axis=alt.Axis(labelAngle=-90)
             ),
             y=alt.Y(
                 "y0:Q",
@@ -1054,6 +1055,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
