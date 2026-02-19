@@ -914,7 +914,7 @@ with st.container(border=True):
             y=alt.Y(
                 "MEDIA_REQ_INT:Q",
                 title=None,
-                axis=alt.Axis(labels=False, ticks=False, domain=False, grid=False)
+                axis=alt.Axis(labels=False, ticks=False, domain=False, grid=True)
             ),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
@@ -1071,4 +1071,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
