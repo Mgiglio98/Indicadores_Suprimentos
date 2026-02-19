@@ -202,22 +202,30 @@ def menor_ordem_fornecimento(
     return out
 
 def valor_medio_por_of(df):
+    df: pd.DataFrame,
+    col_of: str = "OF_CDG",
+    col_valor: str = "PRCTTL_INSUMO",
+    col_data: str = "OF_DATA"
+):
     base = df.copy()
-    base["PRCTTL_INSUMO"] = pd.to_numeric(base.get("PRCTTL_INSUMO"), errors="coerce")
-
-    # Soma por OF
+    base[col_data] = pd.to_datetime(base.get(col_data), errors="coerce")
+    base[col_valor] = pd.to_numeric(base.get(col_valor), errors="coerce")
+    mes_atual = pd.Timestamp.today().to_period("M")
+    inicio = (mes_atual - 11).start_time
+    fim_exclusivo = (mes_atual + 1).start_time
+    base = base[
+        (base[col_data] >= inicio) &
+        (base[col_data] < fim_exclusivo)
+    ]
+    if base.empty:
+        return np.nan
     tot = (
-        base.groupby("OF_CDG", dropna=True)["PRCTTL_INSUMO"]
-            .sum()
-            .reset_index(name="VALOR_TOTAL_OF")
-    )
-    # Remove OFs com total <= 0
-    tot["VALOR_TOTAL_OF"] = pd.to_numeric(tot["VALOR_TOTAL_OF"], errors="coerce")
+        base.groupby(col_of, dropna=True)[col_valor]
+            .sum(min_count=1)
+            .reset_index(name="VALOR_TOTAL_OF"))
     tot = tot[tot["VALOR_TOTAL_OF"] > 0]
-
-    media = float(tot["VALOR_TOTAL_OF"].mean()) if not tot.empty else 0.0
-    tot["VALOR_TOTAL_OF"] = tot["VALOR_TOTAL_OF"].round(2)
-    return round(media, 2), tot
+    media = float(tot["VALOR_TOTAL_OF"].mean()) if not tot.empty else np.nan
+    return media
 
 def percentual_ofs_basicas_ultimo_ano(df):
     df = df.copy()
@@ -1702,6 +1710,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
