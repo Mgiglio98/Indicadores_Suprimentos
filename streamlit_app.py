@@ -956,7 +956,7 @@ with st.container(border=True):
             y=alt.Y("MEDIA_DIAS_UTEIS:Q", title=None),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
-                alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)", format=".2f"),
+                alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)", format=".1f"),
                 alt.Tooltip("TOTAL_OFS:Q", title="Total de OFs", format=".0f"),
                 alt.Tooltip("ULTRAPASSARAM_SLA:Q", title="Acima do SLA", format=".0f"),
             ],
@@ -1061,15 +1061,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
-
-
-
-
-
-
-
