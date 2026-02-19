@@ -20,7 +20,7 @@ from Tratamento_Indicadores import (
     mes_maior_volume_ultimo_ano,
     _format_brl,
     quantidade_empresas_que_venderam_ultimos_3_anos,
-    Meses_top3_volume_geral,
+    meses_top3_volume_geral,
     maior_compra_item_unico,
     menor_compra_item_unico,
     valor_medio_por_item,
@@ -1071,6 +1071,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
