@@ -464,11 +464,10 @@ with st.container(border=True):
             color=alt.Color(
                 "TIPO:N",
                 title="Tipo",
-                sort=["Específico","Básico"],
+                sort=["Específico", "Básico"],
                 legend=alt.Legend(
-                    orient="top",
-                    direction="horizontal",
-                    titleOrient="left"
+                    orient="right",
+                    direction="vertical"
                 )
             )
         )
@@ -1055,6 +1054,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
