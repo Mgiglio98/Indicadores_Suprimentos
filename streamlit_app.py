@@ -964,7 +964,7 @@ with st.container(border=True):
                 "MEDIA_DIAS_UTEIS:Q",
                 title=None,
                 axis=alt.Axis(
-                    labels=False,
+                    labels=True,
                     ticks=False,
                     domain=False,
                     grid=False
@@ -1073,5 +1073,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
