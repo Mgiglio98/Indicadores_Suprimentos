@@ -201,7 +201,7 @@ def menor_ordem_fornecimento(
     out["VALOR_TOTAL"] = pd.to_numeric(out["VALOR_TOTAL"], errors="coerce").round(2)
     return out
 
-def valor_medio_por_of(df):
+def valor_medio_por_of(
     df: pd.DataFrame,
     col_of: str = "OF_CDG",
     col_valor: str = "PRCTTL_INSUMO",
@@ -1710,6 +1710,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
