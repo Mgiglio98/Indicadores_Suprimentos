@@ -1448,12 +1448,21 @@ def ofs_basico_vs_nao_ultimos_12m(
         .reset_index()
         .rename(columns={"index": "ANO_MES"})
     )
-
-    # coluna de ordenação real + label bonito (Jan/25)
+    
     resumo["ANO_MES_PERIOD"] = meses_period
-    resumo["ANO_MES_LABEL"] = resumo["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
 
-    return resumo[["ANO_MES_PERIOD", "ANO_MES_LABEL", "BASICO", "ESPECIFICO", "TOTAL"]]
+    mes_map = {
+        1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
+        7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"
+    }
+
+    resumo["ANO_MES_LABEL"] = (
+        resumo["ANO_MES_PERIOD"].dt.month.map(mes_map)
+        + "/"
+        + resumo["ANO_MES_PERIOD"].dt.strftime("%y")
+    )
+
+    return resumo[["ANO_MES_PERIOD","ANO_MES_LABEL","BASICO","ESPECIFICO","TOTAL"]]
 
 def tabela_ofs_atrasadas(
     df: pd.DataFrame,
@@ -1693,6 +1702,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
