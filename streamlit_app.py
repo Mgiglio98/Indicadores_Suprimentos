@@ -899,27 +899,35 @@ with st.container(border=True):
     df_media = _safe(media_requisicoes_por_empreendimento_ultimos_12m, df)
 
     if isinstance(df_media, pd.DataFrame) and not df_media.empty:
-        df_media["MEDIA_REQ_POR_EMPR"] = pd.to_numeric(df_media["MEDIA_REQ_POR_EMPR"], errors="coerce").round(1)
+        df_plot = df_media.copy()
 
-        base = alt.Chart(df_media).encode(
+        # ✅ valor inteiro para plotar e rotular
+        df_plot["MEDIA_REQ_INT"] = pd.to_numeric(df_plot["MEDIA_REQ_POR_EMPR"], errors="coerce").round(0).astype("Int64")
+
+        base = alt.Chart(df_plot).encode(
             x=alt.X(
                 "ANO_MES_LABEL:N",
                 sort=alt.SortField("ANO_MES_PERIOD"),
                 title=None,
                 axis=alt.Axis(labelAngle=0)
             ),
-            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title=None),
+            y=alt.Y(
+                "MEDIA_REQ_INT:Q",
+                title=None,
+                axis=alt.Axis(labels=False, ticks=False, domain=False, grid=False)
+            ),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
-                alt.Tooltip("MEDIA_REQ_POR_EMPR:Q", title="Média", format=".1f"),
+                alt.Tooltip("MEDIA_REQ_INT:Q", title="Média (req)", format=".0f"),
                 alt.Tooltip("TOTAL_REQ:Q", title="Total de REQs", format=".0f"),
                 alt.Tooltip("EMPREENDIMENTOS:Q", title="Empreendimentos", format=".0f"),
             ]
         )
 
         line = base.mark_line(point=True)
+
         labels = base.mark_text(dy=-8).encode(
-            text=alt.Text("MEDIA_REQ_POR_EMPR:Q", format=".1f")
+            text=alt.Text("MEDIA_REQ_INT:Q", format=".0f")
         )
 
         meta_line = alt.Chart(pd.DataFrame({"y": [4]})).mark_rule(
@@ -928,8 +936,8 @@ with st.container(border=True):
 
         st.altair_chart(line + labels + meta_line, use_container_width=True)
 
-        with st.expander(f"🔎 Ver obras com mais de 4 requisições por mês (últimos 12 meses)"):
-            for _, row in df_media.iterrows():
+        with st.expander("🔎 Ver obras com mais de 4 requisições por mês (últimos 12 meses)"):
+            for _, row in df_plot.iterrows():
                 if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
                     st.markdown(f"**{row['ANO_MES_LABEL']}** — {row['TOP_EMPREENDIMENTOS']}")
     else:
@@ -1063,3 +1071,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
