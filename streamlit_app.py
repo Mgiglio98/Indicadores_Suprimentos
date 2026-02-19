@@ -20,7 +20,7 @@ from Tratamento_Indicadores import (
     mes_maior_volume_ultimo_ano,
     _format_brl,
     quantidade_empresas_que_venderam_ultimos_3_anos,
-    meses_top3_volume_geral,
+    Meses_top3_volume_geral,
     maior_compra_item_unico,
     menor_compra_item_unico,
     valor_medio_por_item,
@@ -202,7 +202,7 @@ df_erp = _load_df_erp()
 df_forn = _load_df_forn()
 df = df_erp.copy()
 
-# Geração do Excel com KPIs detalhados (Fornecedores últimos 3 anos + OFs básicas último ano)
+# Geração do Excel com KPIs detalhados (Fornecedores Últimos 3 anos + OFs básicas Último ano)
 try:
     # 🔄 Igual à função do KPI
     data_limite = pd.Timestamp.today() - pd.DateOffset(years=3)
@@ -242,7 +242,7 @@ try:
         .sort_values("FORNECEDOR_DESC")
     )
 
-    # OFs básicas do último ano
+    # OFs básicas do Último ano
     _, df_of_basicas = percentual_ofs_basicas_ultimo_ano(df)
 
     # Gera Excel com as duas abas
@@ -310,7 +310,7 @@ with st.container(border=True):
     except Exception:
         media_of = None
 
-    # % OFs básicas (último ano)
+    # % OFs básicas (Último ano)
     try:
         pct_grp = percentual_ofs_basicas_ultimo_ano(df)
         pct_bas = pct_grp[0] if isinstance(pct_grp, tuple) else 0.0
@@ -323,13 +323,13 @@ with st.container(border=True):
     except Exception:
         total_cad = None
 
-    # Empresas que venderam (últimos 3 anos)
+    # Empresas que venderam (Últimos 3 anos)
     try:
         qtd_vend = quantidade_empresas_que_venderam_ultimos_3_anos(df)
     except Exception:
         qtd_vend = None
 
-    # Cadastrados no último ano
+    # Cadastrados no Último ano
     # Filtrar apenas fornecedores cadastrados por VANDERLEI.SOUZA
     df_forn_vanderlei = df_forn[df_forn["FORN_QUEMCADASTROU"] == "VANDERLEI.SOUZA"]
     
@@ -350,7 +350,7 @@ with st.container(border=True):
     df_atrasos = pd.DataFrame()
     try:
         taxa_atraso_pct, qtd_atrasadas, total_compras, df_atrasos = compras_atrasadas(
-            df, dias_uteis_sla=3, meses_lookback=12
+            df, dias_uteis_sla=3, Meses_lookback=12
         )
     except Exception:
         taxa_atraso_pct = None
@@ -402,10 +402,10 @@ with st.container(border=True):
 
         spacer1, c1, c2, c3, c4, c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
         c1.metric("Total cadastrados", _format_int_br(resumo["total_cadastrados"]))
-        c2.metric("Cadastrados (últimos 2 anos)", _format_int_br(resumo["cadastrados_ult2a"]))
-        c3.metric("Utilizados (últimos 2 anos)", _format_int_br(resumo["utilizados_ult2a"]))
+        c2.metric("Cadastrados (Últimos 2 anos)", _format_int_br(resumo["cadastrados_ult2a"]))
+        c3.metric("Utilizados (Últimos 2 anos)", _format_int_br(resumo["utilizados_ult2a"]))
         c4.metric("Nunca utilizados", _format_int_br(resumo["nunca_utilizados"]))
-        c5.metric("Cadastrados e utilizados (últimos 2 anos)", _format_int_br(resumo["cadastrados_e_utilizados"]))
+        c5.metric("Cadastrados e utilizados (Últimos 2 anos)", _format_int_br(resumo["cadastrados_e_utilizados"]))
 
         with st.expander("🔎 Ver lista de fornecedores nunca utilizados"):
             if not df_nunca.empty:
@@ -416,12 +416,12 @@ with st.container(border=True):
         st.warning(f"Não foi possível gerar a visão de fornecedores: {e}")
 
 with st.container(border=True):
-    st.subheader("OFs Básicas vs Específicas — últimos 12 meses")
+    st.subheader("OFs Básicas vs Específicas — Últimos 12 Meses")
 
     df_basicos = ofs_basico_vs_nao_ultimos_12m(df_erp)
 
     if df_basicos.empty:
-        st.info("Nenhuma OF registrada nos últimos 12 meses.")
+        st.info("Nenhuma OF registrada nos Últimos 12 Meses.")
     else:
         df_long = df_basicos.melt(
             id_vars=["ANO_MES_PERIOD", "ANO_MES_LABEL", "TOTAL"],
@@ -605,7 +605,7 @@ with st.container(border=True):
         chart_ativos = bars + labels
         st.altair_chart(chart_ativos, use_container_width=True)
     else:
-        st.info("Sem dados para exibir nos últimos 10 anos.")
+        st.info("Sem dados para exibir nos Últimos 10 anos.")
 
 # ---------- OFs destaque ----------
 with st.container(border=True):
@@ -718,9 +718,9 @@ with st.container(border=True):
     st.subheader("Volumes por período")
 
     c1, c2 = st.columns(2)
-    # Top 3 meses (últimos 12 meses)
+    # Top 3 Meses (Últimos 12 Meses)
     with c1:
-        st.markdown("**Top 3 meses (últimos 12 meses)**")
+        st.markdown("**Top 3 Meses (Últimos 12 Meses)**")
         df_mes_12 = _safe(mes_maior_volume_ultimo_ano, df, top_n=3)
         if isinstance(df_mes_12, pd.DataFrame) and not df_mes_12.empty:
             df_mes_12 = _round_cols(df_mes_12, ["VALOR_TOTAL", "PART_%"])
@@ -739,10 +739,10 @@ with st.container(border=True):
         else:
             st.info("Sem dados para exibir.")
             
-    # Top 3 meses (geral, agregando todos os anos por mês-do-ano)
+    # Top 3 Meses (geral, agregando todos os anos por mês-do-ano)
     with c2:
-        st.markdown("**Top 3 meses (últimos 10 anos)**")
-        df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3)
+        st.markdown("**Top 3 Meses (Últimos 10 anos)**")
+        df_mes_all = _safe(Meses_top3_volume_geral, df, top_n=3)
         if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
             df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
             df_mes_all_fmt = _fmt_df_brl(df_mes_all, money=["VALOR_TOTAL"], pcts=["PART_%"])
@@ -763,7 +763,7 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("Volume por Categoria")
 
-    st.markdown("**Mais compradas (últimos 5 anos)**")
+    st.markdown("**Mais compradas (Últimos 5 anos)**")
     df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
     if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
         df_cat5 = df_cat5.copy()
@@ -805,7 +805,7 @@ with st.container(border=True):
     else:
         st.info("Sem dados para exibir.")
 
-    # Maior crescimento desde 2015 (fixo 2015 → último ano, apenas categorias com vendas nos últimos 5 anos)
+    # Maior crescimento desde 2015 (fixo 2015 → Último ano, apenas categorias com vendas nos Últimos 5 anos)
     try:
         col_cat_ref = "INSUMO_CATEGORIA_NORM" if "INSUMO_CATEGORIA_NORM" in df.columns else "INSUMO_CATEGORIA"
         res_g = categorias_crescimento_desde_2015(
@@ -835,13 +835,13 @@ with st.container(border=True):
                 + " | ".join(partes) + "."
             )
         else:
-            st.caption("Nenhuma categoria atende ao critério: vendas em TODOS os últimos 5 anos + base suficiente para cálculo.")
+            st.caption("Nenhuma categoria atende ao critério: vendas em TODOS os Últimos 5 anos + base suficiente para cálculo.")
     except Exception as e:
         st.caption(f"Não foi possível calcular o crescimento desde 2015: {e}")
 
 # ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
-    st.subheader("Requisições e OFs — últimos 12 meses")
+    st.subheader("Requisições e OFs — Últimos 12 Meses")
 
     df_mes = _safe(requisicoes_ofs_ultimos_12m, df)
 
@@ -890,11 +890,11 @@ with st.container(border=True):
 
         st.altair_chart(alt.layer(bars, labels).resolve_scale(y="shared"), use_container_width=True)
     else:
-        st.info("Sem dados de REQ ou OF nos últimos 12 meses.")
+        st.info("Sem dados de REQ ou OF nos Últimos 12 Meses.")
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
-    st.subheader("Média de Requisições por Empreendimento — últimos 12 meses")
+    st.subheader("Média de Requisições por Empreendimento — Últimos 12 Meses")
 
     df_media = _safe(media_requisicoes_por_empreendimento_ultimos_12m, df)
 
@@ -936,16 +936,16 @@ with st.container(border=True):
 
         st.altair_chart(line + labels + meta_line, use_container_width=True)
 
-        with st.expander("🔎 Ver obras com mais de 4 requisições por mês (últimos 12 meses)"):
+        with st.expander("🔎 Ver obras com mais de 4 requisições por mês (Últimos 12 Meses)"):
             for _, row in df_plot.iterrows():
                 if pd.notna(row.get("TOP_EMPREENDIMENTOS")):
                     st.markdown(f"**{row['ANO_MES_LABEL']}** — {row['TOP_EMPREENDIMENTOS']}")
     else:
-        st.info("Sem dados de requisições nos últimos 12 meses.")
+        st.info("Sem dados de requisições nos Últimos 12 Meses.")
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
-    st.subheader("Tempo médio em dias úteis: REQ → OF — últimos 12 meses")
+    st.subheader("Tempo médio em dias úteis: REQ → OF — Últimos 12 Meses")
 
     df_tempo = _safe(tempo_medio_req_para_of_ultimos_12m, df, dias_uteis_sla=3)
 
@@ -987,7 +987,7 @@ with st.container(border=True):
 
         st.altair_chart(line + labels + sla_line, use_container_width=True)
     else:
-        st.info("Sem dados de REQ → OF nos últimos 12 meses.")
+        st.info("Sem dados de REQ → OF nos Últimos 12 Meses.")
         
 with st.container(border=True):
     df_ofs_atrasadas = tabela_ofs_atrasadas(df)
@@ -1071,5 +1071,6 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
