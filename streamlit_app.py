@@ -304,7 +304,7 @@ with st.container(border=True):
 
     # --------- Cálculos prévios (com fallback) ---------
     # Valor médio por OF
-    media_of = valor_medio_por_of_ultimos_12m(df)
+    media_of = valor_medio_por_of(df)
     valor_txt = _format_brl(round(media_of, 2)) if pd.notna(media_of) else "—"
 
     # % OFs básicas (Último ano)
@@ -1068,6 +1068,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
