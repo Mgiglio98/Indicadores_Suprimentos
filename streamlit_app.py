@@ -589,14 +589,14 @@ with st.container(border=True):
         labels = (
             alt.Chart(serie_plot_vis)
             .mark_text(
-                baseline="top",
-                dy=8,
+                baseline="middle",
+                align="center",
                 color="white",
                 fontWeight="bold"
             )
             .encode(
                 x="ANO_TXT:N",
-                y="FORNECEDORES_ATIVOS:Q",
+                y=alt.Y("FORNECEDORES_ATIVOS:Q", stack=None),
                 text="FORNECEDORES_ATIVOS_TXT:N"
             )
         )
@@ -1060,6 +1060,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
