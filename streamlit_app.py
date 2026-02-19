@@ -967,7 +967,7 @@ with st.container(border=True):
         labels = alt.Chart(df_plot).mark_text(dy=-8).encode(
             x=alt.X("ANO_MES_LABEL:N", sort=alt.SortField("ANO_MES_PERIOD")),
             y=alt.Y("MEDIA_DIAS_UTEIS:Q"),
-            text=alt.Text("MEDIA_DIAS_LABEL:Q", format=".0f"),
+            text=alt.Text("MEDIA_DIAS_LABEL:Q", format=".1f"),
         )
 
         sla_line = alt.Chart(pd.DataFrame({"y": [3]})).mark_rule(
@@ -1061,3 +1061,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
