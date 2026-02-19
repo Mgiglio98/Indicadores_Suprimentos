@@ -1090,177 +1090,282 @@ def quantidade_ofs_ate_300_2025_2026(
 
     return resumo, sel[["OF_CDG","ANO","VALOR_TOTAL_OF","OF_DATA","EMPRD_DESC","FORNECEDOR_DESC"]]
 
-def requisicoes_ofs_por_mes(
+def requisicoes_ofs_ultimos_12m(
     df: pd.DataFrame,
-    ano: int = 2026,
     col_req: str = "REQ_CDG",
     col_of: str = "OF_CDG",
     col_empr: str = "EMPRD",
+    col_req_data: str = "REQ_DATA",
+    col_of_data: str = "OF_DATA",
 ) -> pd.DataFrame:
     """
-    Conta REQUISIÇÕES e OFs distintas por mês, considerando apenas datas dentro do ano escolhido.
-    REQ = chave (REQ_CDG, EMPRD)
-    OF  = chave (OF_CDG)
+    Conta REQUISIÇÕES (chave REQ_CDG+EMPRD) e OFs distintas (OF_CDG) por mês,
+    nos últimos 12 meses (inclui o mês atual).
+
+    Retorna:
+      ANO_MES_PERIOD | ANO_MES_LABEL | REQUISICOES | OFS
     """
     base = df.copy()
 
-    # Garantir datetime
-    base["REQ_DATA_DT"] = pd.to_datetime(base.get("REQ_DATA"), errors="coerce")
-    base["OF_DATA_DT"]  = pd.to_datetime(base.get("OF_DATA"),  errors="coerce")
+    # datetime
+    base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
+    base["OF_DATA_DT"]  = pd.to_datetime(base.get(col_of_data),  errors="coerce")
 
-    # --- Contagem de REQ (apenas ano selecionado pela própria REQ_DATA)
+    # janela 12m
+    mes_atual = pd.Timestamp.today().to_period("M")
+    inicio = (mes_atual - 11).start_time
+    fim_exclusivo = (mes_atual + 1).start_time
+
+    # --- REQ: filtra por REQ_DATA
     df_req = (
-        base[(base["REQ_DATA_DT"].dt.year == ano)]
+        base[(base["REQ_DATA_DT"] >= inicio) & (base["REQ_DATA_DT"] < fim_exclusivo)]
         .dropna(subset=["REQ_DATA_DT", col_req, col_empr])
         .drop_duplicates(subset=[col_req, col_empr])
+        .copy()
     )
 
     if not df_req.empty:
-        df_req["ANO_MES"] = df_req["REQ_DATA_DT"].dt.to_period("M")
+        df_req["ANO_MES"] = df_req["REQ_DATA_DT"].dt.to_period("M").astype(str)
         df_req = df_req.groupby("ANO_MES")[col_req].count().reset_index(name="REQUISICOES")
     else:
         df_req = pd.DataFrame(columns=["ANO_MES", "REQUISICOES"])
 
-    # --- Contagem de OF (apenas ano selecionado pela própria OF_DATA)
+    # --- OF: filtra por OF_DATA
     df_of = (
-        base[(base["OF_DATA_DT"].dt.year == ano)]
+        base[(base["OF_DATA_DT"] >= inicio) & (base["OF_DATA_DT"] < fim_exclusivo)]
         .dropna(subset=["OF_DATA_DT", col_of])
         .drop_duplicates(subset=[col_of])
+        .copy()
     )
 
     if not df_of.empty:
-        df_of["ANO_MES"] = df_of["OF_DATA_DT"].dt.to_period("M")
+        df_of["ANO_MES"] = df_of["OF_DATA_DT"].dt.to_period("M").astype(str)
         df_of = df_of.groupby("ANO_MES")[col_of].count().reset_index(name="OFS")
     else:
         df_of = pd.DataFrame(columns=["ANO_MES", "OFS"])
 
-    # Mescla resultados e garante ordem
+    # merge
     df_mes = pd.merge(df_req, df_of, on="ANO_MES", how="outer").fillna(0)
-    df_mes["ANO_MES"] = df_mes["ANO_MES"].astype(str)
+
+    # garante os 12 meses no eixo (mesmo zerado)
+    meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
+    meses_str = meses_period.astype(str)
+
+    df_mes = (
+        df_mes.set_index("ANO_MES")
+        .reindex(meses_str, fill_value=0)
+        .reset_index()
+        .rename(columns={"index": "ANO_MES"})
+    )
+
+    # colunas finais
+    df_mes["ANO_MES_PERIOD"] = meses_period
+    df_mes["ANO_MES_LABEL"] = df_mes["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
+
     df_mes["REQUISICOES"] = df_mes["REQUISICOES"].astype(int)
     df_mes["OFS"] = df_mes["OFS"].astype(int)
 
-    return df_mes.sort_values("ANO_MES").reset_index(drop=True)
+    return df_mes[["ANO_MES_PERIOD", "ANO_MES_LABEL", "REQUISICOES", "OFS"]]
 
-def media_requisicoes_por_empreendimento_mes(
+def media_requisicoes_por_empreendimento_ultimos_12m(
     df: pd.DataFrame,
-    ano: int = 2026,
     col_req: str = "REQ_CDG",
     col_empr: str = "EMPRD",
     col_empr_desc: str = "EMPRD_DESC",
     col_req_data: str = "REQ_DATA",
-    limite_top: int = 4
+    limite_top: int = 4,
 ) -> pd.DataFrame:
     """
-    Calcula a média mensal de requisições por empreendimento e lista empreendimentos
-    que tiveram mais de `limite_top` requisições no mês, no formato "COD (NOME)".
+    Média mensal de requisições por empreendimento nos últimos 12 meses (mês atual incluso).
+    Lista empreendimentos que tiveram mais de `limite_top` requisições no mês, no formato "COD (NOME)".
+
+    Retorna:
+      ANO_MES_PERIOD | ANO_MES_LABEL | TOTAL_REQ | EMPREENDIMENTOS | MEDIA_REQ_POR_EMPR | TOP_EMPREENDIMENTOS
     """
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
-    base = base[base["REQ_DATA_DT"].dt.year == ano].copy()
+
+    mes_atual = pd.Timestamp.today().to_period("M")
+    inicio = (mes_atual - 11).start_time
+    fim_exclusivo = (mes_atual + 1).start_time
+
+    base = base[(base["REQ_DATA_DT"] >= inicio) & (base["REQ_DATA_DT"] < fim_exclusivo)].copy()
     if base.empty:
-        return pd.DataFrame(columns=["ANO_MES","TOTAL_REQ","EMPREENDIMENTOS","MEDIA_REQ_POR_EMPR","TOP_EMPREENDIMENTOS"])
+        return pd.DataFrame(columns=[
+            "ANO_MES_PERIOD","ANO_MES_LABEL","TOTAL_REQ","EMPREENDIMENTOS","MEDIA_REQ_POR_EMPR","TOP_EMPREENDIMENTOS"
+        ])
 
     base = base.dropna(subset=["REQ_DATA_DT", col_req, col_empr])
     base = base.drop_duplicates(subset=[col_req, col_empr])
-    base["ANO_MES"] = base["REQ_DATA_DT"].dt.to_period("M")
+    base["ANO_MES"] = base["REQ_DATA_DT"].dt.to_period("M").astype(str)
 
-    # Garantir descrição de empreendimento
+    # descrição empreendimento
     if col_empr_desc in base.columns:
         base[col_empr_desc] = base[col_empr_desc].astype(str)
     else:
         base[col_empr_desc] = base[col_empr].astype(str)
 
-    # Contagem geral
+    # contagens gerais por mês
     req_counts = base.groupby("ANO_MES")[col_req].count().reset_index(name="TOTAL_REQ")
     empr_counts = base.groupby("ANO_MES")[col_empr].nunique().reset_index(name="EMPREENDIMENTOS")
 
-    # Identificação dos top empreendimentos
+    # tops por mês
     top_por_mes = (
         base.groupby(["ANO_MES", col_empr, col_empr_desc])[col_req]
         .count()
         .reset_index(name="QTD_REQ")
     )
-    top_por_mes = top_por_mes[top_por_mes["QTD_REQ"] > limite_top]
+    top_por_mes = top_por_mes[top_por_mes["QTD_REQ"] > limite_top].copy()
 
-    # Gera string "COD (NOME_CURTO)"
-    top_por_mes["NOME_CURTO"] = top_por_mes[col_empr_desc].str.split().str[0]
-    top_por_mes["COD_NOME"] = top_por_mes[col_empr].astype(str) + " (" + top_por_mes["NOME_CURTO"] + ")"
+    if not top_por_mes.empty:
+        top_por_mes["NOME_CURTO"] = top_por_mes[col_empr_desc].str.split().str[0]
+        top_por_mes["COD_NOME"] = top_por_mes[col_empr].astype(str) + " (" + top_por_mes["NOME_CURTO"] + ")"
 
-    # Agrupa por mês juntando os códigos/nomes
-    top_agg = (
-        top_por_mes.groupby("ANO_MES")["COD_NOME"]
-        .apply(lambda x: ", ".join(sorted(set(x))))
-        .reset_index(name="TOP_EMPREENDIMENTOS")
+        top_agg = (
+            top_por_mes.groupby("ANO_MES")["COD_NOME"]
+            .apply(lambda x: ", ".join(sorted(set(x))))
+            .reset_index(name="TOP_EMPREENDIMENTOS")
+        )
+    else:
+        top_agg = pd.DataFrame(columns=["ANO_MES", "TOP_EMPREENDIMENTOS"])
+
+    df_out = (
+        req_counts.merge(empr_counts, on="ANO_MES", how="outer")
+        .merge(top_agg, on="ANO_MES", how="left")
+        .fillna({"TOTAL_REQ": 0, "EMPREENDIMENTOS": 0})
     )
 
-    df_out = req_counts.merge(empr_counts, on="ANO_MES", how="outer").merge(top_agg, on="ANO_MES", how="left")
-    df_out["MEDIA_REQ_POR_EMPR"] = df_out["TOTAL_REQ"] / df_out["EMPREENDIMENTOS"].replace({0: pd.NA})
-    df_out["ANO_MES"] = df_out["ANO_MES"].astype(str)
-    return df_out.sort_values("ANO_MES").reset_index(drop=True)
+    df_out["TOTAL_REQ"] = df_out["TOTAL_REQ"].astype(int)
+    df_out["EMPREENDIMENTOS"] = df_out["EMPREENDIMENTIMENTOS"].astype(int) if "EMPREENDIMENTIMENTOS" in df_out.columns else df_out["EMPREENDIMENTOS"].astype(int)
 
-def tempo_medio_req_para_of_por_mes(
+    df_out["MEDIA_REQ_POR_EMPR"] = df_out["TOTAL_REQ"] / df_out["EMPREENDIMENTOS"].replace({0: pd.NA})
+
+    # garante os 12 meses
+    meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
+    meses_str = meses_period.astype(str)
+
+    df_out = (
+        df_out.set_index("ANO_MES")
+        .reindex(meses_str, fill_value=0)
+        .reset_index()
+        .rename(columns={"index": "ANO_MES"})
+    )
+
+    df_out["ANO_MES_PERIOD"] = meses_period
+    df_out["ANO_MES_LABEL"] = df_out["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
+
+    # se veio zerado por reindex, o topo vira 0 — corrige pra vazio
+    df_out["TOP_EMPREENDIMENTOS"] = df_out["TOP_EMPREENDIMENTOS"].replace({0: pd.NA})
+
+    return df_out[[
+        "ANO_MES_PERIOD",
+        "ANO_MES_LABEL",
+        "TOTAL_REQ",
+        "EMPREENDIMENTOS",
+        "MEDIA_REQ_POR_EMPR",
+        "TOP_EMPREENDIMENTOS",
+    ]]
+
+def tempo_medio_req_para_of_ultimos_12m(
     df: pd.DataFrame,
-    ano: int = 2026,
     dias_uteis_sla: int = 3,
-    col_req: str = "REQ_CDG",
+    col_of: str = "OF_CDG",
     col_req_data: str = "REQ_DATA",
-    col_of_data: str = "OF_DATA"
+    col_of_data: str = "OF_DATA",
 ) -> pd.DataFrame:
     """
-    Calcula o tempo médio (em dias úteis) entre REQ_DATA e OF_DATA, por mês de 2026.
-    Também conta quantas ultrapassaram o SLA (dias_uteis_sla).
+    Últimos 12 meses (mês atual incluso):
+    Tempo médio (dias úteis) entre REQ_DATA e OF_DATA, agrupado por mês (mês da OF).
+    Também conta OFs acima do SLA.
 
-    Retorna DataFrame com:
-      ANO_MES | MEDIA_DIAS_UTEIS | TOTAL_OFS | ULTRAPASSARAM_SLA
+    Retorna:
+      ANO_MES_PERIOD | ANO_MES_LABEL | MEDIA_DIAS_UTEIS | TOTAL_OFS | ULTRAPASSARAM_SLA
     """
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
     base["OF_DATA_DT"] = pd.to_datetime(base.get(col_of_data), errors="coerce")
 
-    # Manter apenas linhas válidas e do ano desejado (considerando OF_DATA para agrupar por mês)
-    base = base.dropna(subset=["REQ_DATA_DT", "OF_DATA_DT"]).copy()
-    base = base[base["OF_DATA_DT"].dt.year == ano]
+    # janela 12m
+    mes_atual = pd.Timestamp.today().to_period("M")
+    inicio = (mes_atual - 11).start_time
+    fim_exclusivo = (mes_atual + 1).start_time
+
+    base = base.dropna(subset=["REQ_DATA_DT", "OF_DATA_DT", col_of]).copy()
+    base = base[(base["OF_DATA_DT"] >= inicio) & (base["OF_DATA_DT"] < fim_exclusivo)]
 
     if base.empty:
-        return pd.DataFrame(columns=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"])
+        return pd.DataFrame(columns=[
+            "ANO_MES_PERIOD","ANO_MES_LABEL","MEDIA_DIAS_UTEIS","TOTAL_OFS","ULTRAPASSARAM_SLA"
+        ])
 
     # Agregar por OF para não duplicar cálculo
     agg = (
-        base.groupby("OF_CDG", dropna=True)
+        base.groupby(col_of, dropna=True)
         .agg(
             REQ_DATA_MIN=("REQ_DATA_DT", "min"),
-            OF_DATA_REF=("OF_DATA_DT", "min")
+            OF_DATA_REF=("OF_DATA_DT", "min"),
         )
         .reset_index()
     )
-
-    # Remove OFs inconsistentes
-    # agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
     if agg.empty:
-        return pd.DataFrame(columns=["ANO_MES", "MEDIA_DIAS_UTEIS", "TOTAL_OFS", "ULTRAPASSARAM_SLA"])
+        return pd.DataFrame(columns=[
+            "ANO_MES_PERIOD","ANO_MES_LABEL","MEDIA_DIAS_UTEIS","TOTAL_OFS","ULTRAPASSARAM_SLA"
+        ])
 
-    # Calcula dias úteis
+    # (opcional) descartar inconsistências (OF antes da REQ)
+    agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
+    if agg.empty:
+        return pd.DataFrame(columns=[
+            "ANO_MES_PERIOD","ANO_MES_LABEL","MEDIA_DIAS_UTEIS","TOTAL_OFS","ULTRAPASSARAM_SLA"
+        ])
+
+    # dias úteis (seg-sex)
     start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
     end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
-    weekmask = "1111100"  # seg..sex
-    dias_uteis = np.busday_count(begindates=start, enddates=end, weekmask=weekmask)
+    agg["DIAS_UTEIS"] = np.busday_count(start, end, weekmask="1111100").astype(int)
 
-    agg["DIAS_UTEIS"] = dias_uteis.astype(int)
-    agg["ANO_MES"] = agg["OF_DATA_REF"].dt.to_period("M")
+    # mês de referência (mês da OF)
+    agg["ANO_MES"] = agg["OF_DATA_REF"].dt.to_period("M").astype(str)
 
-    # Agrupa por mês
     res = (
         agg.groupby("ANO_MES")
         .agg(
             MEDIA_DIAS_UTEIS=("DIAS_UTEIS", "mean"),
-            TOTAL_OFS=("OF_CDG", "count"),
-            ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: (x > dias_uteis_sla).sum()))
-        .reset_index())
+            TOTAL_OFS=(col_of, "count"),
+            ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: int((x > dias_uteis_sla).sum())),
+        )
+        .reset_index()
+    )
 
+    # garante 12 meses no eixo (mesmo sem dado)
+    meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
+    meses_str = meses_period.astype(str)
+
+    res = (
+        res.set_index("ANO_MES")
+        .reindex(meses_str)
+        .reset_index()
+        .rename(columns={"index": "ANO_MES"})
+    )
+
+    # preenche ausências
+    res["TOTAL_OFS"] = pd.to_numeric(res["TOTAL_OFS"], errors="coerce").fillna(0).astype(int)
+    res["ULTRAPASSARAM_SLA"] = pd.to_numeric(res["ULTRAPASSARAM_SLA"], errors="coerce").fillna(0).astype(int)
+    res["MEDIA_DIAS_UTEIS"] = pd.to_numeric(res["MEDIA_DIAS_UTEIS"], errors="coerce")
+
+    res["ANO_MES_PERIOD"] = meses_period
+    res["ANO_MES_LABEL"] = res["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
+
+    # arredondamento final (mantém float pra linha ficar suave; no chart você pode exibir inteiro)
     res["MEDIA_DIAS_UTEIS"] = res["MEDIA_DIAS_UTEIS"].round(2)
-    res["ANO_MES"] = res["ANO_MES"].astype(str)
-    return res.sort_values("ANO_MES").reset_index(drop=True)
+
+    return res[[
+        "ANO_MES_PERIOD",
+        "ANO_MES_LABEL",
+        "MEDIA_DIAS_UTEIS",
+        "TOTAL_OFS",
+        "ULTRAPASSARAM_SLA",
+    ]]
 
 def total_ofs_por_ano(
     df: pd.DataFrame,
@@ -1285,45 +1390,70 @@ def total_ofs_por_ano(
         .to_dict())
     return {str(k): int(v) for k, v in contagens.items()}
 
-def ofs_basico_vs_nao_por_mes(
+def ofs_basico_vs_nao_ultimos_12m(
     df: pd.DataFrame,
-    ano: int = 2026,
     col_tipo: str = "TIPO_MATERIAL",
     col_of: str = "OF_CDG",
-    col_data: str = "OF_DATA"
+    col_data: str = "OF_DATA",
+    basico_label: str = "BÁSICO",
 ) -> pd.DataFrame:
     """
-    Conta OFs com e sem básicos para cada mês do ano especificado.
-    Retorna DataFrame: ANO_MES | BASICO | ESPECIFICO | TOTAL
+    Conta OFs com e sem básicos para os últimos 12 meses (inclui o mês atual).
+    Retorna: ANO_MES_PERIOD | ANO_MES_LABEL | BASICO | ESPECIFICO | TOTAL
     """
     base = df.copy()
-    base["OF_DATA_DT"] = pd.to_datetime(base.get(col_data), errors="coerce")
+    base["OF_DATA_DT"] = pd.to_datetime(base[col_data], errors="coerce")
     base = base.dropna(subset=["OF_DATA_DT", col_of, col_tipo])
 
-    # filtra só o ano desejado
-    base = base[base["OF_DATA_DT"].dt.year == ano]
-    if base.empty:
-        return pd.DataFrame(columns=["ANO_MES","BASICO","ESPECIFICO","TOTAL"])
+    mes_atual = pd.Timestamp.today().to_period("M")
+    inicio = (mes_atual - 11).start_time
+    fim_exclusivo = (mes_atual + 1).start_time
 
-    # agrega por OF → define se é básico ou específico
+    base = base[(base["OF_DATA_DT"] >= inicio) & (base["OF_DATA_DT"] < fim_exclusivo)]
+    if base.empty:
+        return pd.DataFrame(columns=["ANO_MES_PERIOD", "ANO_MES_LABEL", "BASICO", "ESPECIFICO", "TOTAL"])
+
+    base["ANO_MES"] = base["OF_DATA_DT"].dt.to_period("M").astype(str)
+
+    # Por OF+mês: se existir qualquer item básico, a OF vira BÁSICO
     agrupado = (
-        base.groupby([col_of, base["OF_DATA_DT"].dt.to_period("M")])[col_tipo]
-        .apply(lambda x: "BÁSICO" if "BÁSICO" in set(x) else "ESPECÍFICO")
-        .reset_index(name="TIPO_OF")
+        base.groupby([col_of, "ANO_MES"], as_index=False)[col_tipo]
+        .apply(lambda s: basico_label if (s == basico_label).any() else "ESPECÍFICO")
+        .rename(columns={col_tipo: "TIPO_OF"})
     )
 
     resumo = (
-        agrupado.groupby("OF_DATA_DT")["TIPO_OF"]
+        agrupado.groupby("ANO_MES")["TIPO_OF"]
         .value_counts()
         .unstack(fill_value=0)
         .reset_index()
-        .rename(columns={"OF_DATA_DT": "ANO_MES", "BÁSICO": "BASICO", "ESPECÍFICO": "ESPECIFICO"})
     )
 
-    resumo["TOTAL"] = resumo["BASICO"] + resumo["ESPECIFICO"]
-    resumo["ANO_MES"] = resumo["ANO_MES"].astype(str)
+    # garante colunas sempre
+    if "BÁSICO" not in resumo.columns:
+        resumo["BÁSICO"] = 0
+    if "ESPECÍFICO" not in resumo.columns:
+        resumo["ESPECÍFICO"] = 0
 
-    return resumo
+    resumo = resumo.rename(columns={"BÁSICO": "BASICO", "ESPECÍFICO": "ESPECIFICO"})
+    resumo["TOTAL"] = resumo["BASICO"] + resumo["ESPECIFICO"]
+
+    # garante todos os 12 meses no eixo (mesmo sem OF)
+    meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
+    meses_str = meses_period.astype(str)
+
+    resumo = (
+        resumo.set_index("ANO_MES")
+        .reindex(meses_str, fill_value=0)
+        .reset_index()
+        .rename(columns={"index": "ANO_MES"})
+    )
+
+    # coluna de ordenação real + label bonito (Jan/25)
+    resumo["ANO_MES_PERIOD"] = meses_period
+    resumo["ANO_MES_LABEL"] = resumo["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
+
+    return resumo[["ANO_MES_PERIOD", "ANO_MES_LABEL", "BASICO", "ESPECIFICO", "TOTAL"]]
 
 def tabela_ofs_atrasadas(
     df: pd.DataFrame,
@@ -1563,6 +1693,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
