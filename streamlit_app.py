@@ -304,11 +304,8 @@ with st.container(border=True):
 
     # --------- Cálculos prévios (com fallback) ---------
     # Valor médio por OF
-    try:
-        vm = valor_medio_por_of(df)
-        media_of = vm[0] if isinstance(vm, tuple) else 0
-    except Exception:
-        media_of = None
+    media_of = valor_medio_por_of_ultimos_12m(df)
+    valor_txt = _format_brl(round(media_of, 2)) if pd.notna(media_of) else "—"
 
     # % OFs básicas (Último ano)
     try:
@@ -379,7 +376,7 @@ with st.container(border=True):
    # Linha 1 centralizada (5 KPIs)
     spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
 
-    r1c1.metric("Valor médio OF (10a)", _format_brl(round(media_of, 2)) if media_of is not None else "—")
+    r1c1.metric("Valor médio OF (12m)", valor_txt)
     r1c2.metric("Valor médio por Insumo (10a)", _format_brl(round(media_item, 2)) if media_item is not None else "—")
     r1c3.metric("% de OFs Básicas (12m)", _format_pct_br(pct_bas) if pct_bas is not None else "—")
     r1c4.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
@@ -1071,6 +1068,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
