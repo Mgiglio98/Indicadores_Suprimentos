@@ -964,10 +964,10 @@ with st.container(border=True):
                 "MEDIA_DIAS_UTEIS:Q",
                 title=None,
                 axis=alt.Axis(
-                    labels=True,
-                    ticks=False,
-                    domain=False,
-                    grid=False
+                    labels=False,
+                    ticks=True,
+                    domain=True,
+                    grid=True
                 )
             ),
             tooltip=[
@@ -1073,6 +1073,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
