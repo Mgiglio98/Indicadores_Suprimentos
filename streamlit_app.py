@@ -416,7 +416,7 @@ with st.container(border=True):
         st.warning(f"Não foi possível gerar a visão de fornecedores: {e}")
 
 with st.container(border=True):
-    st.subheader("OFs Básicas vs Específicas — últimos 12 meses (mês atual incluso)")
+    st.subheader("OFs Básicas vs Específicas — últimos 12 meses")
 
     df_basicos = ofs_basico_vs_nao_ultimos_12m(df_erp)
 
@@ -796,7 +796,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 1: Requisições x OFs ----------
 with st.container(border=True):
-    st.subheader("Requisições e OFs — últimos 12 meses (mês atual incluso)")
+    st.subheader("Requisições e OFs — últimos 12 meses")
 
     df_mes = _safe(requisicoes_ofs_ultimos_12m, df)
 
@@ -849,7 +849,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 2: Média de Requisições por Empreendimento ----------
 with st.container(border=True):
-    st.subheader("Média de Requisições por Empreendimento — últimos 12 meses (mês atual incluso)")
+    st.subheader("Média de Requisições por Empreendimento — últimos 12 meses")
 
     df_media = _safe(media_requisicoes_por_empreendimento_ultimos_12m, df)
 
@@ -892,7 +892,7 @@ with st.container(border=True):
 
 # ---------- Gráfico 3: Tempo médio REQ → OF ----------
 with st.container(border=True):
-    st.subheader("Tempo médio em dias úteis: REQ → OF — últimos 12 meses (mês atual incluso)")
+    st.subheader("Tempo médio em dias úteis: REQ → OF — últimos 12 meses")
 
     df_tempo = _safe(tempo_medio_req_para_of_ultimos_12m, df, dias_uteis_sla=3)
 
@@ -1016,4 +1016,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
