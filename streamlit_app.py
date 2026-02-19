@@ -965,8 +965,8 @@ with st.container(border=True):
                 title=None,
                 axis=alt.Axis(
                     labels=False,
-                    ticks=True,
-                    domain=True,
+                    ticks=False,
+                    domain=False,
                     grid=True
                 )
             ),
@@ -1073,6 +1073,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
