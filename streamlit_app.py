@@ -430,66 +430,66 @@ with st.container(border=True):
             value_name="QTD"
         )
         
-        ordem_tipo = ["ESPECIFICO", "BASICO"]  # ajuste se quiser inverter o empilhamento
+        # Nome bonito na legenda
+        df_long["TIPO"] = df_long["TIPO"].replace({
+            "BASICO": "Básico",
+            "ESPECIFICO": "Específico"
+        })
 
         chart_base = (
             alt.Chart(df_long)
             .transform_stack(
                 stack="QTD",
                 groupby=["ANO_MES_LABEL"],
-                sort=[alt.SortField("TIPO", order="ascending")],
-                as_=["y0", "y1"],
-                offset="normalize",
+                as_=["y0","y1"],
+                offset="normalize"
             )
             .transform_calculate(
-                y_mid="(datum.y0 + datum.y1) / 2",
-                pct="datum.y1 - datum.y0",
+                y_mid="(datum.y0 + datum.y1) / 2"
             )
         )
         
-        bars = (
-            chart_base
-            .mark_bar()
-            .encode(
-                x=alt.X(
-                    "ANO_MES_LABEL:N",
-                    sort=alt.SortField("ANO_MES_PERIOD"),
-                    title=None,
-                    axis=alt.Axis(labelAngle=0),
-                ),
-                y=alt.Y("y0:Q", title=None, axis=alt.Axis(labels=False, ticks=False, domain=False, grid=False)),
-                y2="y1:Q",
-                color=alt.Color("TIPO:N", title="Tipo", sort=ordem_tipo),
-                tooltip=[
-                    alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
-                    alt.Tooltip("TIPO:N", title="Tipo"),
-                    alt.Tooltip("QTD:Q", title="Qtd", format=".0f"),
-                    alt.Tooltip("pct:Q", title="Proporção", format=".1%"),
-                ],
+        bars = chart_base.mark_bar().encode(
+            x=alt.X(
+                "ANO_MES_LABEL:N",
+                sort=alt.SortField("ANO_MES_PERIOD"),
+                title=None
+            ),
+            y=alt.Y(
+                "y0:Q",
+                title=None,
+                axis=alt.Axis(labels=False, ticks=False, domain=False, grid=False)
+            ),
+            y2="y1:Q",
+            color=alt.Color(
+                "TIPO:N",
+                title="Tipo",
+                sort=["Específico","Básico"],
+                legend=alt.Legend(
+                    orient="top",
+                    direction="horizontal",
+                    titleOrient="left"
+                )
             )
         )
-        
-        labels = (
-            chart_base
-            .mark_text(
-                baseline="middle",
-                align="center",
-                fontWeight="bold",
-                color="white",
-            )
-            .encode(
-                x=alt.X("ANO_MES_LABEL:N", sort=alt.SortField("ANO_MES_PERIOD")),
-                y=alt.Y("y_mid:Q"),
-                text=alt.Text("QTD:Q", format=".0f"),
-            )
+
+        labels = chart_base.mark_text(
+            baseline="middle",
+            align="center",
+            fontWeight="bold",
+            color="white"
+        ).encode(
+            x=alt.X("ANO_MES_LABEL:N", sort=alt.SortField("ANO_MES_PERIOD")),
+            y=alt.Y("y_mid:Q"),
+            text=alt.Text("QTD:Q", format=".0f")
         )
-        
+
         chart = (
             (bars + labels)
-            .properties(height=360, padding={"top": 25, "bottom": 5, "left": 5, "right": 5})
-            .configure_view(clip=False)  # <- evita cortar qualquer coisa
+            .properties(height=360, padding={"top": 30})
+            .configure_view(clip=False)
         )
-        
+
         st.altair_chart(chart, use_container_width=True)
 
 with st.container(border=True):
@@ -1055,6 +1055,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
