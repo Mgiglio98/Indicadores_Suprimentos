@@ -429,7 +429,7 @@ with st.container(border=True):
             var_name="TIPO",
             value_name="QTD"
         )
-
+        
         base = alt.Chart(df_long).encode(
             x=alt.X(
                 "ANO_MES_LABEL:N",
@@ -439,19 +439,27 @@ with st.container(border=True):
             ),
             y=alt.Y("QTD:Q", stack="normalize", title="Proporção"),
             color=alt.Color("TIPO:N", title="Tipo"),
-            tooltip=["ANO_MES_LABEL", "TIPO", "QTD", "TOTAL"]
+            tooltip=["ANO_MES_LABEL", "TIPO", "QTD"]
         )
-
+        
         bars = base.mark_bar()
-
-        labels = base.mark_text(
-            baseline="middle",
-            align="center"
-        ).encode(
-            text=alt.Text("QTD:Q", format=".0f")
+        
+        # 👇 centraliza o texto dentro da fatia
+        labels = (
+            base.mark_text(
+                baseline="middle",
+                align="center",
+                fontWeight="bold",
+                color="white"   # melhora contraste
+            )
+            .encode(
+                text=alt.Text("QTD:Q", format=".0f")
+            )
         )
-
-        st.altair_chart(bars + labels, use_container_width=True)
+        
+        chart = (bars + labels).properties(height=350)
+        
+        st.altair_chart(chart, use_container_width=True)
 
 with st.container(border=True):
     st.subheader("Materiais Básicos — Fornecimento por local")
@@ -1016,3 +1024,4 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
