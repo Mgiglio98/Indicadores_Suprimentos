@@ -861,11 +861,11 @@ with st.container(border=True):
                 x=alt.X(
                     "ANO_MES_LABEL:N",
                     sort=alt.SortField("ANO_MES_PERIOD"),
-                    title="Mês",
+                    title=None,
                     axis=alt.Axis(labelAngle=0)
                 ),
                 xOffset=alt.XOffset("TIPO:N", sort=["REQUISICOES", "OFS"]),
-                y=alt.Y("QTD:Q", title="Quantidade"),
+                y=alt.Y("QTD:Q", title=None, axis=alt.Axis(labels=False, ticks=False, domain=False, grid=False)),
                 color=alt.Color("TIPO:N", title="Tipo"),
                 tooltip=[
                     alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
@@ -905,10 +905,10 @@ with st.container(border=True):
             x=alt.X(
                 "ANO_MES_LABEL:N",
                 sort=alt.SortField("ANO_MES_PERIOD"),
-                title="Mês",
+                title=None,
                 axis=alt.Axis(labelAngle=0)
             ),
-            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title="Média de requisições"),
+            y=alt.Y("MEDIA_REQ_POR_EMPR:Q", title=None),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
                 alt.Tooltip("MEDIA_REQ_POR_EMPR:Q", title="Média", format=".1f"),
@@ -950,10 +950,10 @@ with st.container(border=True):
             x=alt.X(
                 "ANO_MES_LABEL:N",
                 sort=alt.SortField("ANO_MES_PERIOD"),
-                title="Mês",
+                title=None,
                 axis=alt.Axis(labelAngle=0)
             ),
-            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title="Dias úteis (média)"),
+            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title=None),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
                 alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)", format=".2f"),
@@ -1061,6 +1061,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
