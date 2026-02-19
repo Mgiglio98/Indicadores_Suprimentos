@@ -944,14 +944,8 @@ with st.container(border=True):
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
         df_plot = df_tempo.copy()
 
-        # label igual ao valor do gráfico (1 casa)
-        df_plot["MEDIA_DIAS_LABEL"] = df_plot["MEDIA_DIAS_UTEIS"].round(1)
-
-        # ✅ define domínio Y (considera SLA e o maior valor real)
-        y_max = float(
-            max(df_plot["MEDIA_DIAS_UTEIS"].max(skipna=True), 3)  # 3 = SLA
-        )
-        y_domain = [0, y_max + 0.2]  # folga visual
+        # ✅ arredonda para inteiro e usa isso NO GRÁFICO
+        df_plot["MEDIA_DIAS_INT"] = df_plot["MEDIA_DIAS_UTEIS"].round(0).astype("Int64")
 
         base = alt.Chart(df_plot).encode(
             x=alt.X(
@@ -961,35 +955,31 @@ with st.container(border=True):
                 axis=alt.Axis(labelAngle=0)
             ),
             y=alt.Y(
-                "MEDIA_DIAS_UTEIS:Q",
+                "MEDIA_DIAS_INT:Q",
                 title=None,
-                axis=alt.Axis(
-                    labels=False,
-                    ticks=False,
-                    domain=False,
-                    grid=True
-                )
+                axis=alt.Axis(labels=False, ticks=False, domain=False, grid=True)
             ),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
-                alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)", format=".1f"),
+                alt.Tooltip("MEDIA_DIAS_INT:Q", title="Média (dias)", format=".0f"),
                 alt.Tooltip("TOTAL_OFS:Q", title="Total de OFs", format=".0f"),
                 alt.Tooltip("ULTRAPASSARAM_SLA:Q", title="Acima do SLA", format=".0f"),
             ],
         )
-        
+
         line = base.mark_line(point=True)
-        
+
         labels = base.mark_text(dy=-8).encode(
-            text=alt.Text("MEDIA_DIAS_LABEL:Q", format=".1f")
+            text=alt.Text("MEDIA_DIAS_INT:Q", format=".0f")
         )
-        
+
         sla_line = alt.Chart(pd.DataFrame({"y": [3]})).mark_rule(
-            color="red",
-            strokeDash=[4, 4]
+            color="red", strokeDash=[4, 4]
         ).encode(y="y:Q")
-        
+
         st.altair_chart(line + labels + sla_line, use_container_width=True)
+    else:
+        st.info("Sem dados de REQ → OF nos últimos 12 meses.")
         
 with st.container(border=True):
     df_ofs_atrasadas = tabela_ofs_atrasadas(df)
@@ -1073,8 +1063,3 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
-
-
-
-
-
