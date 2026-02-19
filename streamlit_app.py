@@ -430,34 +430,65 @@ with st.container(border=True):
             value_name="QTD"
         )
         
-        base = alt.Chart(df_long).encode(
-            x=alt.X(
-                "ANO_MES_LABEL:N",
-                sort=alt.SortField("ANO_MES_PERIOD"),
-                title="Mês",
-                axis=alt.Axis(labelAngle=0)
-            ),
-            y=alt.Y("QTD:Q", stack="normalize", title="Proporção"),
-            color=alt.Color("TIPO:N", title="Tipo"),
-            tooltip=["ANO_MES_LABEL", "TIPO", "QTD"]
+        ordem_tipo = ["ESPECIFICO", "BASICO"]  # ajuste se quiser inverter o empilhamento
+
+        chart_base = (
+            alt.Chart(df_long)
+            .transform_stack(
+                stack="QTD",
+                groupby=["ANO_MES_LABEL"],
+                sort=[alt.SortField("TIPO", order="ascending")],
+                as_=["y0", "y1"],
+                offset="normalize",
+            )
+            .transform_calculate(
+                y_mid="(datum.y0 + datum.y1) / 2",
+                pct="datum.y1 - datum.y0",
+            )
         )
         
-        bars = base.mark_bar()
+        bars = (
+            chart_base
+            .mark_bar()
+            .encode(
+                x=alt.X(
+                    "ANO_MES_LABEL:N",
+                    sort=alt.SortField("ANO_MES_PERIOD"),
+                    title="Mês",
+                    axis=alt.Axis(labelAngle=0),
+                ),
+                y=alt.Y("y0:Q", title="Proporção", axis=alt.Axis(format="%")),
+                y2="y1:Q",
+                color=alt.Color("TIPO:N", title="Tipo", sort=ordem_tipo),
+                tooltip=[
+                    alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
+                    alt.Tooltip("TIPO:N", title="Tipo"),
+                    alt.Tooltip("QTD:Q", title="Qtd", format=".0f"),
+                    alt.Tooltip("pct:Q", title="Proporção", format=".1%"),
+                ],
+            )
+        )
         
-        # 👇 centraliza o texto dentro da fatia
         labels = (
-            base.mark_text(
+            chart_base
+            .mark_text(
                 baseline="middle",
                 align="center",
                 fontWeight="bold",
-                color="white"   # melhora contraste
+                color="white",
             )
             .encode(
-                text=alt.Text("QTD:Q", format=".0f")
+                x=alt.X("ANO_MES_LABEL:N", sort=alt.SortField("ANO_MES_PERIOD")),
+                y=alt.Y("y_mid:Q"),
+                text=alt.Text("QTD:Q", format=".0f"),
             )
         )
         
-        chart = (bars + labels).properties(height=350)
+        chart = (
+            (bars + labels)
+            .properties(height=360, padding={"top": 25, "bottom": 5, "left": 5, "right": 5})
+            .configure_view(clip=False)  # <- evita cortar qualquer coisa
+        )
         
         st.altair_chart(chart, use_container_width=True)
 
@@ -1024,4 +1055,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
