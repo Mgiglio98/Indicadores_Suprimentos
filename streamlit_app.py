@@ -579,8 +579,8 @@ with st.container(border=True):
             alt.Chart(serie_plot_vis)
             .mark_bar()
             .encode(
-                x=alt.X("ANO_TXT:N", title="ANO", axis=alt.Axis(labelAngle=0)),
-                y=alt.Y("FORNECEDORES_ATIVOS:Q", title=None, axis=None),   # << remove eixo de valores
+                x=alt.X("ANO_TXT:N", title=None, axis=alt.Axis(labelAngle=0)),
+                y=alt.Y("FORNECEDORES_ATIVOS:Q", title=None, axis=None),
                 tooltip=["ANO_TXT", "FORNECEDORES_ATIVOS"]
             )
             .properties(height=300)
@@ -588,7 +588,12 @@ with st.container(border=True):
     
         labels = (
             alt.Chart(serie_plot_vis)
-            .mark_text(dy=-5)  # acima da barra
+            .mark_text(
+                baseline="top",
+                dy=8,
+                color="white",
+                fontWeight="bold"
+            )
             .encode(
                 x="ANO_TXT:N",
                 y="FORNECEDORES_ATIVOS:Q",
@@ -1055,6 +1060,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
