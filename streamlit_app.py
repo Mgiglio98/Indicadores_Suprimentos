@@ -942,9 +942,16 @@ with st.container(border=True):
     df_tempo = _safe(tempo_medio_req_para_of_ultimos_12m, df, dias_uteis_sla=3)
 
     if isinstance(df_tempo, pd.DataFrame) and not df_tempo.empty:
-        # para exibir no rótulo como inteiro (sem perder a média real no DF)
         df_plot = df_tempo.copy()
-        df_plot["MEDIA_DIAS_LABEL"] = df_plot["MEDIA_DIAS_UTEIS"].round(0)
+
+        # label igual ao valor do gráfico (1 casa)
+        df_plot["MEDIA_DIAS_LABEL"] = df_plot["MEDIA_DIAS_UTEIS"].round(1)
+
+        # ✅ define domínio Y (considera SLA e o maior valor real)
+        y_max = float(
+            max(df_plot["MEDIA_DIAS_UTEIS"].max(skipna=True), 3)  # 3 = SLA
+        )
+        y_domain = [0, y_max + 0.2]  # folga visual
 
         base = alt.Chart(df_plot).encode(
             x=alt.X(
@@ -953,7 +960,16 @@ with st.container(border=True):
                 title=None,
                 axis=alt.Axis(labelAngle=0)
             ),
-            y=alt.Y("MEDIA_DIAS_UTEIS:Q", title=None),
+            y=alt.Y(
+                "MEDIA_DIAS_UTEIS:Q",
+                title=None,
+                axis=alt.Axis(
+                    labels=False,
+                    ticks=False,
+                    domain=False,
+                    grid=False
+                )
+            ),
             tooltip=[
                 alt.Tooltip("ANO_MES_LABEL:N", title="Mês"),
                 alt.Tooltip("MEDIA_DIAS_UTEIS:Q", title="Média (dias úteis)", format=".1f"),
@@ -961,24 +977,20 @@ with st.container(border=True):
                 alt.Tooltip("ULTRAPASSARAM_SLA:Q", title="Acima do SLA", format=".0f"),
             ],
         )
-
+        
         line = base.mark_line(point=True)
-
-        labels = alt.Chart(df_plot).mark_text(dy=-8).encode(
-            x=alt.X("ANO_MES_LABEL:N", sort=alt.SortField("ANO_MES_PERIOD")),
-            y=alt.Y("MEDIA_DIAS_UTEIS:Q"),
-            text=alt.Text("MEDIA_DIAS_LABEL:Q", format=".1f"),
+        
+        labels = base.mark_text(dy=-8).encode(
+            text=alt.Text("MEDIA_DIAS_LABEL:Q", format=".1f")
         )
-
+        
         sla_line = alt.Chart(pd.DataFrame({"y": [3]})).mark_rule(
-            color="red", strokeDash=[4, 4]
+            color="red",
+            strokeDash=[4, 4]
         ).encode(y="y:Q")
-
+        
         st.altair_chart(line + labels + sla_line, use_container_width=True)
-    else:
-        st.info("Sem dados de REQ → OF nos últimos 12 meses.")
-# ⬇️ NOVO bloco: tabela de OFs atrasadas (>3 dias úteis)
-
+        
 with st.container(border=True):
     df_ofs_atrasadas = tabela_ofs_atrasadas(df)
     st.subheader("OFs que ultrapassaram o SLA — Requisições 2025")
@@ -1061,4 +1073,5 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
