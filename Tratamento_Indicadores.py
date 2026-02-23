@@ -1303,8 +1303,11 @@ def tempo_medio_req_para_of_ultimos_12m(
             .reset_index()
         )
 
-        # remove inconsistências
-        agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
+        # remove inconsistências (ignora hora)
+        agg = agg[
+            agg["OF_DATA_REF"].dt.normalize() >=
+            agg["REQ_DATA_MIN"].dt.normalize()
+        ].copy()
 
         if agg.empty:
             meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
@@ -1688,6 +1691,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
