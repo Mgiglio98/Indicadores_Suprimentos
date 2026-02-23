@@ -261,35 +261,51 @@ def mes_maior_volume_ultimo_ano(df, top_n=3):
     res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
     return res.head(int(top_n))
 
-def quantidade_empresas_que_venderam_ultimos_3_anos(df):
+def meses_top3_volume_geral(df, top_n=3, anos=5):
+    """
+    Top N meses (Jan..Dez) com maior volume considerando
+    apenas os últimos `anos` anos fechados (baseado em OF_DATA).
+    Ex: se ano atual = 2026 e anos=5 → considera 2022–2026.
+    """
+
     df = df.copy()
-    df["OF_DATA_DT"] = pd.to_datetime(df.get("OF_DATA"), errors="coerce")
-    limite = pd.Timestamp.today() - pd.DateOffset(years=3)
-    base = df[df["OF_DATA_DT"] >= limite].copy()
+    df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
+
+    base = df.dropna(subset=["OF_DATA_DT"]).copy()
     if base.empty:
-        return 0
-    if "PRCTTL_INSUMO" in base.columns:
-        v = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce").fillna(0)
-        base = base[v > 0]
-        if base.empty:
-            return 0
-    candidatos = [
-        "FORNECEDOR_CDG", "FORNECEDOR_ID", "COD_FORNECEDOR",
-        "FORN_CNPJ", "CNPJ", "PED_FORNECEDOR", "FORNECEDOR"
-    ]
-    col_forn = next((c for c in candidatos if c in base.columns), None)
-    if not col_forn:
-        raise KeyError(
-            f"Não encontrei coluna de fornecedor. Tente uma destas: {candidatos}. Disponíveis: {list(base.columns)}"
-        )
-    s = (
-        base[col_forn]
-        .astype("string")
-        .str.strip()
-        .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
-        .dropna()
+        return pd.DataFrame(columns=["MES_ROTULO", "VALOR_TOTAL", "PART_%"])
+
+    # --- Filtro anos fechados ---
+    ano_atual = pd.Timestamp.today().year
+    ano_inicio = ano_atual - (anos - 1)
+
+    base = base[base["OF_DATA_DT"].dt.year >= ano_inicio]
+
+    if base.empty:
+        return pd.DataFrame(columns=["MES_ROTULO", "VALOR_TOTAL", "PART_%"])
+
+    base["PRCTTL_INSUMO"] = pd.to_numeric(base["PRCTTL_INSUMO"], errors="coerce")
+    base["MES"] = base["OF_DATA_DT"].dt.month
+
+    _MES_LABEL = {
+        1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
+        7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"
+    }
+
+    agg = (
+        base.groupby("MES")["PRCTTL_INSUMO"]
+            .sum()
+            .reset_index(name="VALOR_TOTAL")
     )
-    return int(s.nunique())
+
+    total = agg["VALOR_TOTAL"].sum()
+    agg["PART_%"] = (agg["VALOR_TOTAL"]/total*100).round(2) if total else 0.0
+    agg["MES_ROTULO"] = agg["MES"].map(_MES_LABEL)
+    agg["VALOR_TOTAL"] = agg["VALOR_TOTAL"].round(2)
+
+    out = agg.sort_values("VALOR_TOTAL", ascending=False).head(int(top_n))
+
+    return out[["MES_ROTULO", "VALOR_TOTAL", "PART_%"]]
 
 def meses_top3_volume_geral(df, top_n=3):
     """
@@ -1681,6 +1697,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
