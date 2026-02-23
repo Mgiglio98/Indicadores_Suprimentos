@@ -19,7 +19,6 @@ from Tratamento_Indicadores import (
     percentual_ofs_basicas_ultimo_ano,
     mes_maior_volume_ultimo_ano,
     _format_brl,
-    quantidade_empresas_que_venderam_ultimos_3_anos,
     top3meses_volume_geral,
     maior_compra_item_unico,
     menor_compra_item_unico,
@@ -318,12 +317,6 @@ with st.container(border=True):
         total_cad = total_empresas_cadastradas(df_forn)
     except Exception:
         total_cad = None
-
-    # Empresas que venderam (Últimos 3 anos)
-    try:
-        qtd_vend = quantidade_empresas_que_venderam_ultimos_3_anos(df)
-    except Exception:
-        qtd_vend = None
 
     # Cadastrados no Último ano
     # Filtrar apenas fornecedores cadastrados por VANDERLEI.SOUZA
@@ -1076,6 +1069,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
