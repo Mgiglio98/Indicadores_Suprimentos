@@ -262,12 +262,6 @@ def mes_maior_volume_ultimo_ano(df, top_n=3):
     return res.head(int(top_n))
 
 def top3meses_volume_geral(df, top_n=3, anos=5):
-    """
-    Top N meses (Jan..Dez) com maior volume considerando
-    apenas os últimos `anos` anos fechados (baseado em OF_DATA).
-    Ex: se ano atual = 2026 e anos=5 → considera 2022–2026.
-    """
-
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
 
@@ -275,11 +269,15 @@ def top3meses_volume_geral(df, top_n=3, anos=5):
     if base.empty:
         return pd.DataFrame(columns=["MES_ROTULO", "VALOR_TOTAL", "PART_%"])
 
-    # --- Filtro anos fechados ---
+    # últimos anos FECHADOS (exclui o ano atual)
     ano_atual = pd.Timestamp.today().year
-    ano_inicio = ano_atual - (anos - 1)
+    ano_fim = ano_atual - 1
+    ano_inicio = ano_fim - (anos - 1)
 
-    base = base[base["OF_DATA_DT"].dt.year >= ano_inicio]
+    base = base[
+        (base["OF_DATA_DT"].dt.year >= ano_inicio) &
+        (base["OF_DATA_DT"].dt.year <= ano_fim)
+    ]
 
     if base.empty:
         return pd.DataFrame(columns=["MES_ROTULO", "VALOR_TOTAL", "PART_%"])
@@ -299,12 +297,11 @@ def top3meses_volume_geral(df, top_n=3, anos=5):
     )
 
     total = agg["VALOR_TOTAL"].sum()
-    agg["PART_%"] = (agg["VALOR_TOTAL"]/total*100).round(2) if total else 0.0
+    agg["PART_%"] = (agg["VALOR_TOTAL"] / total * 100).round(2) if total else 0.0
     agg["MES_ROTULO"] = agg["MES"].map(_MES_LABEL)
     agg["VALOR_TOTAL"] = agg["VALOR_TOTAL"].round(2)
 
     out = agg.sort_values("VALOR_TOTAL", ascending=False).head(int(top_n))
-
     return out[["MES_ROTULO", "VALOR_TOTAL", "PART_%"]]
 
 def maior_compra_item_unico(df):
@@ -1670,6 +1667,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
