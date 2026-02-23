@@ -1477,9 +1477,8 @@ def tabela_ofs_atrasadas(
     base["REQ_DATA"] = pd.to_datetime(base["REQ_DATA"], errors="coerce")
     base["OF_DATA"] = pd.to_datetime(base["OF_DATA"], errors="coerce")
 
-    # Filtra ano (padrão = ano atual)
     if month is None:
-        month = pd.Timestamp.today().year
+        month = pd.Timestamp.today().month
     base = base[base["REQ_DATA"].dt.month == month - 12]
 
     # Mantém apenas linhas válidas
@@ -1696,6 +1695,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
