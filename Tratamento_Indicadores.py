@@ -1460,7 +1460,7 @@ def ofs_basico_vs_nao_ultimos_12m(
 
 def tabela_ofs_atrasadas(
     df: pd.DataFrame,
-    ano: int | None = None,
+    month: int | None = None,
     dias_uteis_sla: int = 3
 ) -> pd.DataFrame:
     """
@@ -1478,9 +1478,9 @@ def tabela_ofs_atrasadas(
     base["OF_DATA"] = pd.to_datetime(base["OF_DATA"], errors="coerce")
 
     # Filtra ano (padrão = ano atual)
-    if ano is None:
-        ano = pd.Timestamp.today().year
-    base = base[base["REQ_DATA"].dt.year == ano - 1]
+    if month is None:
+        month = pd.Timestamp.today().year
+    base = base[base["REQ_DATA"].dt.year == month - 12]
 
     # Mantém apenas linhas válidas
     base = base.dropna(subset=["REQ_DATA", "OF_DATA", "OF_CDG"])
@@ -1696,6 +1696,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
