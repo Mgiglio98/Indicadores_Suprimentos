@@ -461,7 +461,7 @@ def menor_compra_item_unico(
 def categorias_mais_compradas_ultimos_anos(df, anos=5, col_cat="INSUMO_CATEGORIA"):
     df = df.copy()
     df["OF_DATA_DT"] = pd.to_datetime(df["OF_DATA"], errors="coerce")
-    base = df[df["OF_DATA_DT"] >= pd.Timestamp.today() - pd.DateOffset(years=anos)].copy()
+    base = df[df["OF_DATA_DT"] >= pd.Timestamp.today() - pd.DateOffset(months=meses)].copy()
     if base.empty or col_cat not in base.columns:
         return pd.DataFrame(columns=["CATEGORIA", "VALOR_TOTAL", "PART_%"])
 
@@ -1696,6 +1696,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
