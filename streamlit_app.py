@@ -729,23 +729,26 @@ with st.container(border=True):
             
     # Top 3 Meses (geral, agregando todos os anos por mês-do-ano)
     with c2:
-        st.markdown("**Top 3 Meses (Últimos 10 anos)**")
-        df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3)
-        if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
-            df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
-            df_mes_all_fmt = _fmt_df_brl(df_mes_all, money=["VALOR_TOTAL"], pcts=["PART_%"])
-            st.dataframe(
-                df_mes_all_fmt,
-                use_container_width=True,
-                hide_index=True,
-                column_config={
-                    "MES_ROTULO":  st.column_config.TextColumn("MÊS"),
-                    "VALOR_TOTAL": st.column_config.TextColumn("VALOR_TOTAL"),
-                    "PART_%":      st.column_config.TextColumn("PART_%"),
-                },
-            )
-        else:
-            st.info("Sem dados para exibir.")
+    st.markdown("**Top 3 Meses (Últimos 5 anos)**")
+
+    df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3, anos=5)
+
+    if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
+        df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
+        df_mes_all_fmt = _fmt_df_brl(df_mes_all, money=["VALOR_TOTAL"], pcts=["PART_%"])
+
+        st.dataframe(
+            df_mes_all_fmt,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "MES_ROTULO":  st.column_config.TextColumn("MÊS"),
+                "VALOR_TOTAL": st.column_config.TextColumn("VALOR TOTAL"),
+                "PART_%":      st.column_config.TextColumn("PARTICIPAÇÃO"),
+            },
+        )
+    else:
+        st.info("Sem dados para exibir.")
 
 # ---------- Série de Categorias ----------
 with st.container(border=True):
@@ -1076,6 +1079,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
