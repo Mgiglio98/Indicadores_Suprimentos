@@ -23,7 +23,6 @@ from Tratamento_Indicadores import (
     meses_top3_volume_geral,
     maior_compra_item_unico,
     menor_compra_item_unico,
-    valor_medio_por_item,
     categorias_mais_compradas_ultimos_anos,
     categorias_basicos_distintos,
     fornecedores_basicos_por_local_cadastro,
@@ -336,13 +335,6 @@ with st.container(border=True):
     except Exception:
         cad_no_ano = None
 
-    # Ticket médio por ITEM (linha)
-    try:
-        vm_item = valor_medio_por_item(df)
-        media_item = vm_item[0] if isinstance(vm_item, tuple) else 0
-    except Exception:
-        media_item = None
-
     # Compras com atraso (12m)
     df_atrasos = pd.DataFrame()
     try:
@@ -374,13 +366,12 @@ with st.container(border=True):
         total_ofs_2025 = total_ofs_2026 = None
 
    # Linha 1 centralizada (5 KPIs)
-    spacer1, r1c1, r1c2, r1c3, r1c4, r1c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
+    spacer1, r1c1, r1c2, r1c3, r1c4, spacer2 = st.columns([1, 2, 2, 2, 2, 1])
 
     r1c1.metric("Valor médio OF (12m)", valor_txt)
-    r1c2.metric("Valor médio por Insumo (10a)", _format_brl(round(media_item, 2)) if media_item is not None else "—")
-    r1c3.metric("% de OFs Básicas (12m)", _format_pct_br(pct_bas) if pct_bas is not None else "—")
-    r1c4.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
-    r1c5.metric("Tempo médio OF (5a)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
+    r1c2.metric("% de OFs Básicas (12m)", _format_pct_br(pct_bas) if pct_bas is not None else "—")
+    r1c3.metric("Tempo médio OF (12m)", (f"{int(round(m12))} dias") if m12 is not None else "—")
+    r1c4.metric("Tempo médio OF (5a)", (f"{int(round(m5a))} dias") if m5a is not None else "—")
     
     # Linha 2 centralizada (4 KPIs)
     spacer1, r2c1, r2c2, r2c3, r2c4, r2c5, spacer2 = st.columns([1, 2, 2, 2, 2, 2, 1])
@@ -1068,6 +1059,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
