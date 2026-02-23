@@ -1253,102 +1253,108 @@ def tempo_medio_req_para_of_ultimos_12m(
     col_req_data: str = "REQ_DATA",
     col_of_data: str = "OF_DATA",
 ) -> pd.DataFrame:
+
     base = df.copy()
     base["REQ_DATA_DT"] = pd.to_datetime(base.get(col_req_data), errors="coerce")
-    base["OF_DATA_DT"] = pd.to_datetime(base.get(col_of_data), errors="coerce")
+    base["OF_DATA_DT"]  = pd.to_datetime(base.get(col_of_data), errors="coerce")
 
     mes_atual = pd.Timestamp.today().to_period("M")
     inicio = (mes_atual - 11).start_time
     fim_exclusivo = (mes_atual + 1).start_time
 
-    # --- Base do mês (ERP): filtra só por OF_DATA, igual requisicoes_ofs_ultimos_12m ---
-    base_mes = (
+    # -----------------------------
+    # 1) TOTAL ERP (igual sua função de REQ x OF)
+    # -----------------------------
+    base_of = (
         base[(base["OF_DATA_DT"] >= inicio) & (base["OF_DATA_DT"] < fim_exclusivo)]
         .dropna(subset=["OF_DATA_DT", col_of])
+        .drop_duplicates(subset=[col_of])
+        .copy()
+    )
+    if not base_of.empty:
+        base_of["ANO_MES"] = base_of["OF_DATA_DT"].dt.to_period("M").astype(str)
+        total_erp = base_of.groupby("ANO_MES")[col_of].count().reset_index(name="TOTAL_OFS")
+    else:
+        total_erp = pd.DataFrame(columns=["ANO_MES", "TOTAL_OFS"])
+
+    # -----------------------------
+    # 2) VÁLIDAS para cálculo de tempo (precisa REQ_DATA)
+    # -----------------------------
+    base_valid = (
+        base[(base["OF_DATA_DT"] >= inicio) & (base["OF_DATA_DT"] < fim_exclusivo)]
+        .dropna(subset=["REQ_DATA_DT", "OF_DATA_DT", col_of])
         .copy()
     )
 
-    # TOTAL_OFS = contagem "certa" (ERP) por mês
-    total_erp = (
-        base_mes.drop_duplicates(subset=[col_of])
-        .assign(ANO_MES=lambda d: d["OF_DATA_DT"].dt.to_period("M").astype(str))
-        .groupby("ANO_MES")[col_of].count()
-        .reset_index(name="TOTAL_OFS")
-    )
-
-    # --- Base válida pra tempo: exige REQ_DATA e coerência ---
-    base_valid = base_mes.dropna(subset=["REQ_DATA_DT"]).copy()
-
-    # agrega por OF (1 linha por OF)
-    agg = (
-        base_valid.groupby(col_of, dropna=True)
-        .agg(
-            REQ_DATA_MIN=("REQ_DATA_DT", "min"),
-            OF_DATA_REF=("OF_DATA_DT", "min"),
-        )
-        .reset_index()
-    )
-
-    # coerência
-    agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
-
-    if agg.empty:
-        # garante os 12 meses no eixo
+    if base_valid.empty:
+        # garante eixo 12 meses
         meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
-        meses_str = meses_period.astype(str)
-
-        out = (
-            total_erp.set_index("ANO_MES")
-            .reindex(meses_str, fill_value=0)
+        res = pd.DataFrame({"ANO_MES": meses_period.astype(str)})
+        res["MEDIA_DIAS_UTEIS"] = pd.NA
+        res["TOTAL_OFS_VALIDAS"] = 0
+        res["ULTRAPASSARAM_SLA"] = 0
+    else:
+        agg = (
+            base_valid.groupby(col_of, dropna=True)
+            .agg(
+                REQ_DATA_MIN=("REQ_DATA_DT", "min"),
+                OF_DATA_REF=("OF_DATA_DT", "min"),
+            )
             .reset_index()
-            .rename(columns={"index": "ANO_MES"})
         )
-        out["ANO_MES_PERIOD"] = meses_period
-        out["ANO_MES_LABEL"] = out["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
-        out["MEDIA_DIAS_UTEIS"] = np.nan
-        out["TOTAL_OFS_VALIDAS"] = 0
-        out["ULTRAPASSARAM_SLA"] = 0
-        return out[[
-            "ANO_MES_PERIOD","ANO_MES_LABEL",
-            "MEDIA_DIAS_UTEIS","TOTAL_OFS","TOTAL_OFS_VALIDAS","ULTRAPASSARAM_SLA"
-        ]]
 
-    # dias úteis
-    start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
-    end = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
-    agg["DIAS_UTEIS"] = np.busday_count(start, end, weekmask="1111100").astype(int)
+        # remove inconsistências
+        agg = agg[agg["OF_DATA_REF"] >= agg["REQ_DATA_MIN"]].copy()
 
-    agg["ANO_MES"] = agg["OF_DATA_REF"].dt.to_period("M").astype(str)
+        if agg.empty:
+            meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
+            res = pd.DataFrame({"ANO_MES": meses_period.astype(str)})
+            res["MEDIA_DIAS_UTEIS"] = pd.NA
+            res["TOTAL_OFS_VALIDAS"] = 0
+            res["ULTRAPASSARAM_SLA"] = 0
+        else:
+            start = agg["REQ_DATA_MIN"].dt.date.values.astype("datetime64[D]")
+            end   = agg["OF_DATA_REF"].dt.date.values.astype("datetime64[D]")
+            agg["DIAS_UTEIS"] = np.busday_count(start, end, weekmask="1111100").astype(int)
 
-    res = (
-        agg.groupby("ANO_MES")
-        .agg(
-            MEDIA_DIAS_UTEIS=("DIAS_UTEIS", "mean"),
-            TOTAL_OFS_VALIDAS=(col_of, "count"),
-            ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: int((x > dias_uteis_sla).sum())),
-        )
-        .reset_index()
-    )
+            agg["ANO_MES"] = agg["OF_DATA_REF"].dt.to_period("M").astype(str)
 
-    # junta com TOTAL_OFS do ERP (o "certo")
-    res = res.merge(total_erp, on="ANO_MES", how="right")
+            res = (
+                agg.groupby("ANO_MES")
+                .agg(
+                    MEDIA_DIAS_UTEIS=("DIAS_UTEIS", "mean"),
+                    TOTAL_OFS_VALIDAS=(col_of, "count"),
+                    ULTRAPASSARAM_SLA=("DIAS_UTEIS", lambda x: int((x > dias_uteis_sla).sum())),
+                )
+                .reset_index()
+            )
 
-    # garante os 12 meses
+            # garante eixo 12 meses
+            meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
+            meses_str = meses_period.astype(str)
+
+            res = (
+                res.set_index("ANO_MES")
+                .reindex(meses_str)
+                .reset_index()
+                .rename(columns={"index": "ANO_MES"})
+            )
+
+            res["TOTAL_OFS_VALIDAS"] = pd.to_numeric(res["TOTAL_OFS_VALIDAS"], errors="coerce").fillna(0).astype(int)
+            res["ULTRAPASSARAM_SLA"] = pd.to_numeric(res["ULTRAPASSARAM_SLA"], errors="coerce").fillna(0).astype(int)
+            res["MEDIA_DIAS_UTEIS"] = pd.to_numeric(res["MEDIA_DIAS_UTEIS"], errors="coerce").round(2)
+
+    # -----------------------------
+    # 3) Merge: coloca TOTAL_OFS (ERP) no resultado
+    # -----------------------------
     meses_period = pd.period_range(mes_atual - 11, mes_atual, freq="M")
     meses_str = meses_period.astype(str)
 
-    res = (
-        res.set_index("ANO_MES")
-        .reindex(meses_str)
-        .reset_index()
-        .rename(columns={"index": "ANO_MES"})
-    )
+    if "ANO_MES" not in res.columns:
+        res["ANO_MES"] = meses_str
 
-    # fills
+    res = res.merge(total_erp, on="ANO_MES", how="left")
     res["TOTAL_OFS"] = pd.to_numeric(res["TOTAL_OFS"], errors="coerce").fillna(0).astype(int)
-    res["TOTAL_OFS_VALIDAS"] = pd.to_numeric(res["TOTAL_OFS_VALIDAS"], errors="coerce").fillna(0).astype(int)
-    res["ULTRAPASSARAM_SLA"] = pd.to_numeric(res["ULTRAPASSARAM_SLA"], errors="coerce").fillna(0).astype(int)
-    res["MEDIA_DIAS_UTEIS"] = pd.to_numeric(res["MEDIA_DIAS_UTEIS"], errors="coerce").round(2)
 
     res["ANO_MES_PERIOD"] = meses_period
     res["ANO_MES_LABEL"] = res["ANO_MES_PERIOD"].dt.strftime("%b/%y").str.capitalize()
@@ -1357,8 +1363,8 @@ def tempo_medio_req_para_of_ultimos_12m(
         "ANO_MES_PERIOD",
         "ANO_MES_LABEL",
         "MEDIA_DIAS_UTEIS",
-        "TOTAL_OFS",
-        "TOTAL_OFS_VALIDAS",
+        "TOTAL_OFS",           # <-- igual ao REQ x OF
+        "TOTAL_OFS_VALIDAS",   # <-- usadas na média
         "ULTRAPASSARAM_SLA",
     ]]
 
@@ -1682,6 +1688,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
