@@ -457,20 +457,6 @@ def menor_compra_item_unico(
         out["QUANTIDADE"] = pd.to_numeric(out["QUANTIDADE"], errors="coerce").round(2)
 
     return out
-
-def valor_medio_por_item(df):
-    if "PRCTTL_INSUMO" not in df.columns:
-        return 0.0, pd.DataFrame(columns=["PRECO_TOTAL_ITEM"])
-
-    s = pd.to_numeric(df["PRCTTL_INSUMO"], errors="coerce").dropna()
-    # opcional: considerar apenas positivos
-    s = s[s > 0]
-    if s.empty:
-        return 0.0, pd.DataFrame(columns=["PRECO_TOTAL_ITEM"])
-
-    media = float(s.mean())
-    out = pd.DataFrame({"PRECO_TOTAL_ITEM": s.round(2)})
-    return round(media, 2), out
     
 def categorias_mais_compradas_ultimos_anos(df, anos=5, col_cat="INSUMO_CATEGORIA"):
     df = df.copy()
@@ -1710,6 +1696,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
