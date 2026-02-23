@@ -261,7 +261,7 @@ def mes_maior_volume_ultimo_ano(df, top_n=3):
     res["VALOR_TOTAL"] = pd.to_numeric(res["VALOR_TOTAL"], errors="coerce").round(2)
     return res.head(int(top_n))
 
-def meses_top3_volume_geral(df, top_n=3, anos=5):
+def top3meses_volume_geral(df, top_n=3, anos=5):
     """
     Top N meses (Jan..Dez) com maior volume considerando
     apenas os últimos `anos` anos fechados (baseado em OF_DATA).
@@ -1670,6 +1670,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
