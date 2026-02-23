@@ -751,8 +751,8 @@ with st.container(border=True):
 with st.container(border=True):
     st.subheader("Volume por Categoria")
 
-    st.markdown("**Mais compradas (Últimos 5 anos)**")
-    df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, anos=5)
+    st.markdown("**Mais compradas - Últimos 12 meses**")
+    df_cat5 = _safe(categorias_mais_compradas_ultimos_anos, df, meses=12)
     if isinstance(df_cat5, pd.DataFrame) and not df_cat5.empty:
         df_cat5 = df_cat5.copy()
         df_cat5["VALOR_TOTAL"] = pd.to_numeric(df_cat5["VALOR_TOTAL"], errors="coerce")
@@ -774,7 +774,7 @@ with st.container(border=True):
                 y=alt.Y(
                     "CATEGORIA:N",
                     sort=order_cats,
-                    title="CATEGORIA",
+                    title=None,
                     axis=alt.Axis(labelAngle=0, labelLimit=0, labelPadding=6),
                 ),
                 x=alt.X("VALOR_TOTAL:Q", title=None, axis=None),
@@ -1059,6 +1059,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
