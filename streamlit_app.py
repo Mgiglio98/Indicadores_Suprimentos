@@ -503,16 +503,16 @@ with st.container(border=True):
     c1, c2 = st.columns(2)
 
     with c1:
-        st.caption("Últimos 10 anos")
-        df_top10 = _safe(fornecedor_top_por_uf_emp, df, anos=10)
-        if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
-            if "FORNECEDOR_CDG" in df_top10.columns:
-                df_top10["FORNECEDOR_CDG"] = df_top10["FORNECEDOR_CDG"].astype("string")
-            df_top10 = _round_cols(df_top10, ["VALOR"])  # mantém numérico p/ uso futuro
-            df_top10_fmt = _fmt_df_brl(df_top10, money=["VALOR"])
+        st.caption("Últimos 1 anos")
+        df_top2 = _safe(fornecedor_top_por_uf_emp, df, anos=1)
+        if isinstance(df_top2, pd.DataFrame) and not df_top2.empty:
+            if "FORNECEDOR_CDG" in df_top2.columns:
+                df_top2["FORNECEDOR_CDG"] = df_top2["FORNECEDOR_CDG"].astype("string")
+            df_top2 = _round_cols(df_top2, ["VALOR"])
+            df_top2_fmt = _fmt_df_brl(df_top2, money=["VALOR"])
         
             st.dataframe(
-                df_top10_fmt,
+                df_top2_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
@@ -524,16 +524,16 @@ with st.container(border=True):
             st.info("Sem dados para exibir.")
 
     with c2:
-        st.caption("Últimos 2 anos")
-        df_top2 = _safe(fornecedor_top_por_uf_emp, df, anos=2)
-        if isinstance(df_top2, pd.DataFrame) and not df_top2.empty:
-            if "FORNECEDOR_CDG" in df_top2.columns:
-                df_top2["FORNECEDOR_CDG"] = df_top2["FORNECEDOR_CDG"].astype("string")
-            df_top2 = _round_cols(df_top2, ["VALOR"])
-            df_top2_fmt = _fmt_df_brl(df_top2, money=["VALOR"])
+        st.caption("Últimos 5 anos")
+        df_top10 = _safe(fornecedor_top_por_uf_emp, df, anos=5)
+        if isinstance(df_top10, pd.DataFrame) and not df_top10.empty:
+            if "FORNECEDOR_CDG" in df_top10.columns:
+                df_top10["FORNECEDOR_CDG"] = df_top10["FORNECEDOR_CDG"].astype("string")
+            df_top10 = _round_cols(df_top10, ["VALOR"])  # mantém numérico p/ uso futuro
+            df_top10_fmt = _fmt_df_brl(df_top10, money=["VALOR"])
         
             st.dataframe(
-                df_top2_fmt,
+                df_top10_fmt,
                 use_container_width=True,
                 hide_index=True,
                 column_config={
@@ -1069,6 +1069,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
