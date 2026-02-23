@@ -1461,27 +1461,25 @@ def ofs_basico_vs_nao_ultimos_12m(
 def tabela_ofs_atrasadas(
     df: pd.DataFrame,
     month: int | None = None,
+    year: int | None = None,
     dias_uteis_sla: int = 3
 ) -> pd.DataFrame:
-    """
-    Retorna tabela de OFs que ultrapassaram o SLA de `dias_uteis_sla`
-    dias úteis entre REQ_DATA e OF_DATA.
-
-    Inclui colunas:
-        EMPREENDIMENTO (EMPRD) | EMPREENDIMENTO_DESC (EMPRD_DESC)
-        | REQUISICAO | DATA_REQUISICAO | OF | DATA_OF | INSUMOS
-    """
     base = df.copy()
 
-    # Converte datas
     base["REQ_DATA"] = pd.to_datetime(base["REQ_DATA"], errors="coerce")
     base["OF_DATA"] = pd.to_datetime(base["OF_DATA"], errors="coerce")
 
     if month is None:
         month = pd.Timestamp.today().month
-    base = base[base["REQ_DATA"].dt.month == month - 12]
+    if year is None:
+        year = pd.Timestamp.today().year
 
-    # Mantém apenas linhas válidas
+    # Exemplo: filtra OFs do mês/ano
+    base = base[
+        (base["OF_DATA"].dt.month == month) &
+        (base["OF_DATA"].dt.year == year)
+    ]
+
     base = base.dropna(subset=["REQ_DATA", "OF_DATA", "OF_CDG"])
     if base.empty:
         return pd.DataFrame(columns=[
@@ -1490,7 +1488,6 @@ def tabela_ofs_atrasadas(
             "OF", "DATA_OF", "INSUMOS"
         ])
 
-    # Agrega por OF
     agg = (
         base.groupby("OF_CDG", dropna=True)
             .agg(
@@ -1499,16 +1496,16 @@ def tabela_ofs_atrasadas(
                 REQUISICAO=("REQ_CDG", "min"),
                 DATA_REQUISICAO=("REQ_DATA", "min"),
                 DATA_OF=("OF_DATA", "min"),
-                INSUMOS=("INSUMO_DESC",
-                         lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
+                INSUMOS=("INSUMO_DESC", lambda x: ", ".join(sorted(set(x.dropna().astype(str)))))
             )
             .reset_index()
-            .rename(columns={"OF_CDG": "OF",
-                             "EMPRENDIMENTO": "EMPRD",
-                             "EMPRENDIMENTO_DESC": "EMPRD_DESC"})
+            .rename(columns={
+                "OF_CDG": "OF",
+                "EMPRENDIMENTO": "EMPRD",
+                "EMPRENDIMENTO_DESC": "EMPRD_DESC"
+            })
     )
 
-    # Remove inconsistências
     agg = agg[agg["DATA_OF"] >= agg["DATA_REQUISICAO"]]
     if agg.empty:
         return pd.DataFrame(columns=[
@@ -1517,15 +1514,13 @@ def tabela_ofs_atrasadas(
             "OF", "DATA_OF", "INSUMOS"
         ])
 
-    # Cálculo de dias úteis
     dias_uteis = np.busday_count(
-        begindates=agg["DATA_REQUISICAO"].dt.date.values.astype("datetime64[D]"),
-        enddates=agg["DATA_OF"].dt.date.values.astype("datetime64[D]"),
+        agg["DATA_REQUISICAO"].dt.date.values.astype("datetime64[D]"),
+        agg["DATA_OF"].dt.date.values.astype("datetime64[D]"),
         weekmask="1111100"
     )
     agg["DIAS_UTEIS"] = dias_uteis.astype(int)
 
-    # Filtra OFs atrasadas
     atrasadas = agg[agg["DIAS_UTEIS"] > dias_uteis_sla].copy()
     if atrasadas.empty:
         return pd.DataFrame(columns=[
@@ -1534,17 +1529,14 @@ def tabela_ofs_atrasadas(
             "OF", "DATA_OF", "INSUMOS"
         ])
 
-    # Formata datas
     atrasadas["DATA_REQUISICAO"] = atrasadas["DATA_REQUISICAO"].dt.strftime("%d/%m/%Y")
     atrasadas["DATA_OF"] = atrasadas["DATA_OF"].dt.strftime("%d/%m/%Y")
 
-    return atrasadas[
-        [
-            "EMPRD", "EMPRD_DESC",
-            "REQUISICAO", "DATA_REQUISICAO",
-            "OF", "DATA_OF", "INSUMOS"
-        ]
-    ]
+    return atrasadas[[
+        "EMPRD", "EMPRD_DESC",
+        "REQUISICAO", "DATA_REQUISICAO",
+        "OF", "DATA_OF", "INSUMOS"
+    ]]
 
 def recorrencia_materiais_basicos_2026(df: pd.DataFrame, corte: float = 0.50) -> pd.DataFrame:
     """
@@ -1695,6 +1687,7 @@ def itens_basicos_pequenas_qtds_alta_frequencia_2026(
     out["media_qtd"] = out["media_qtd"].round(3)
 
     return out.reset_index(drop=True)
+
 
 
 
