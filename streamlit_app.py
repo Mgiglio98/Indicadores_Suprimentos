@@ -20,7 +20,7 @@ from Tratamento_Indicadores import (
     mes_maior_volume_ultimo_ano,
     _format_brl,
     quantidade_empresas_que_venderam_ultimos_3_anos,
-    meses_top3_volume_geral,
+    top3meses_volume_geral,
     maior_compra_item_unico,
     menor_compra_item_unico,
     categorias_mais_compradas_ultimos_anos,
@@ -730,7 +730,7 @@ with st.container(border=True):
     # Top 3 Meses (geral, agregando todos os anos por mês-do-ano)
     with c2:
         st.markdown("**Top 3 Meses (Últimos 5 anos)**")
-        df_mes_all = _safe(meses_top3_volume_geral, df, top_n=3, anos=5)
+        df_mes_all = _safe(top3meses_volume_geral, df, top_n=3, anos=5)
         if isinstance(df_mes_all, pd.DataFrame) and not df_mes_all.empty:
             df_mes_all = _round_cols(df_mes_all, ["VALOR_TOTAL", "PART_%"])
             df_mes_all_fmt = _fmt_df_brl(df_mes_all, money=["VALOR_TOTAL"], pcts=["PART_%"])
@@ -1076,6 +1076,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
