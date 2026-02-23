@@ -978,29 +978,46 @@ with st.container(border=True):
         st.info("Sem dados de REQ → OF nos Últimos 12 Meses.")
         
 with st.container(border=True):
-    df_ofs_atrasadas = tabela_ofs_atrasadas(df)
     st.subheader("OFs que ultrapassaram o SLA — Últimos 12 meses")
-    st.dataframe(df_ofs_atrasadas, use_container_width=True, hide_index=True)
 
-    # --- Download da tabela de OFs atrasadas ---
-    if isinstance(df_ofs_atrasadas, pd.DataFrame) and not df_ofs_atrasadas.empty:
-        # Cria o Excel em memória
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df_ofs_atrasadas.to_excel(writer, index=False, sheet_name="OFs_Atrasadas")
-        buffer.seek(0)
-    
-        # Gera nome com data de hoje
-        nome_arquivo = f"OFs_Atrasadas_{datetime.today().strftime('%Y-%m-%d')}.xlsx"
-    
-        st.download_button(
-            label="📥 Baixar tabela de OFs atrasadas (Excel)",
-            data=buffer,
-            file_name=nome_arquivo,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
+    if isinstance(df, pd.DataFrame) and not df.empty:
+
+        df_ofs_atrasadas = tabela_ofs_atrasadas(df)
+
+        if not df_ofs_atrasadas.empty:
+
+            st.dataframe(
+                df_ofs_atrasadas,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # --- Download ---
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                df_ofs_atrasadas.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="OFs_Atrasadas"
+                )
+
+            buffer.seek(0)
+
+            nome_arquivo = (
+                f"OFs_Atrasadas_12M_"
+                f"{datetime.today().strftime('%Y-%m-%d')}.xlsx"
+            )
+
+            st.download_button(
+                label="📥 Baixar tabela de OFs atrasadas (Excel)",
+                data=buffer,
+                file_name=nome_arquivo,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        else:
+            st.success("✅ Nenhuma OF ultrapassou o SLA nos últimos 12 meses.")
     else:
-        st.info("Nenhuma OF atrasada encontrada para exportar.")
+        st.warning("Base de dados vazia ou inválida.")
 
 # Carrega apenas uma vez
 if "df_anomalias" not in st.session_state:
@@ -1059,6 +1076,7 @@ div[data-testid="stMetric"] {
     letter-spacing: .2px;}
 </style>
 """, unsafe_allow_html=True)
+
 
 
 
